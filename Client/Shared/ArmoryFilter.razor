@@ -1,0 +1,65 @@
+﻿@inject DialogService dialog
+@inject ILocalStorageService storage
+
+<div>
+    <div style="display:flex;align-items:center;">
+        <p class="margin-b-0">显示设置：</p>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowStockFilter" TValue="bool" Name="ShowSorter" />
+            <RadzenLabel Text="库存" Component="ShowSorter" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowTypeFilter" TValue="bool" Name="ShowStatusSorter" />
+            <RadzenLabel Text="类型" Component="ShowStatusSorter" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowLevelFilter" TValue="bool" Name="ShowTrace" />
+            <RadzenLabel Text="装等" Component="ShowTrace" Style="margin-left: 5px;" />
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;margin-top:10px">
+        <p class="margin-b-0">自定义筛选：</p>
+        <RadzenTextBox @bind-Value=filterStr Placeholder="库存>=0 && 装等>=0" Style="flex:1" />
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="保存"
+                          Click="Ok" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+        </div>
+    </div>
+</div>
+
+<style>
+    .div-cb-group {
+        margin-left: 10px;
+        display: flex;
+        align-items: center;
+    }
+</style>
+
+@code {
+    string filterStr;
+    [Parameter]
+    public EquipFilterRecord FilterRecord { get; set; }
+
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    protected override void OnInitialized()
+    {
+        filterStr = FilterRecord.CustomFilter;
+    }
+
+    async Task Ok()
+    {
+        FilterRecord.CustomFilter = filterStr;
+        await storage.SaveFilterRecord(FilterRecord, Server);
+        dialog.Close(true);
+    }
+
+    void Cancel()
+    {
+        dialog.Close();
+    }
+}

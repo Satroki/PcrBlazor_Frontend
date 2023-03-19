@@ -1,0 +1,181 @@
+﻿@inject ApiService api
+@inject DialogService dialog
+@inject NotificationService ntf
+
+<div class="d-flex fav-group-div">
+    <RadzenFieldset Text="分组" Style="flex:0 0 33.3%">
+        <div class="d-flex w-100">
+            <RadzenButton Icon="add" Click="AddGroup" Style="flex:1" ButtonStyle="ButtonStyle.Primary" title="创建新分组" />
+            <RadzenButton Icon="save" Click="SaveGroup" Style="flex:1;margin:0 10px" ButtonStyle="ButtonStyle.Secondary" title="保存当前分组" />
+            <RadzenButton Icon="delete" Click="DeleteGroup" Style="flex:1" ButtonStyle="ButtonStyle.Danger" title="删除当前分组" />
+        </div>
+        <RadzenTextBox @bind-Value="@group.Name" Placeholder="分组名称" Style="width:100%;margin:10px 0" />
+        <RadzenListBox @bind-Value="group" TValue="GroupRecord" Style="width:100%"
+                       Data="@Groups" Change="GroupChanged">
+            <Template Context="d">
+                <div class="d-flex align-items-center">
+                    <div class="f-1">@d.Name</div>
+                    <RadzenBadge BadgeStyle="BadgeStyle.Danger" Text="未保存" Visible="@(d.Id==0)" />
+                </div>
+            </Template>
+        </RadzenListBox>
+    </RadzenFieldset>
+    <RadzenFieldset Text="所有角色" Style="flex:0 0 33.3%">
+        <RadzenListBox AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" @bind-Value="lineIds"
+                       Multiple="true" Data="@Lines" TextProperty="UnitName" ValueProperty="Id" Style="width:100%">
+            <Template Context="b">
+                @{ var line = (UserBoxLine)b; }
+                <div class="list-unit">
+                    <img src="@line.Icon.GetUnitIcon()" style="width:48px;height:48px" />
+                    <p style="margin:0 0 0 5px">@line.UnitName</p>
+                </div>
+            </Template>
+        </RadzenListBox>
+        <RadzenButton Icon="arrow_right_alt" Click="AddToGroup" Style="display:block;margin-top:10px"
+                      title="添加到当前分组" />
+    </RadzenFieldset>
+    <RadzenFieldset Text="@group.Name" Style="flex:0 0 33.3%">
+        <RadzenListBox AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" @bind-Value="gIds"
+                       Multiple="true" Data="@groupLines" TextProperty="UnitName" ValueProperty="Id" Style="width:100%">
+            <Template Context="b">
+                @{ var line = (UserBoxLine)b; }
+                <div class="list-unit">
+                    <img src="@line.Icon.GetUnitIcon()" style="width:48px;height:48px" />
+                    <p style="margin:0 0 0 5px;">@line.UnitName</p>
+                </div>
+            </Template>
+        </RadzenListBox>
+        <RadzenButton Icon="close" Click="RemoveFromGroup" Style="display:block;margin-top:10px" ButtonStyle="ButtonStyle.Danger"
+                      title="从分组中移除" />
+    </RadzenFieldset>
+</div>
+
+<style>
+    .fav-group-div .rz-fieldset-content {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .fav-group-div .rz-listbox {
+        max-height: calc(100vh - 200px);
+    }
+
+    .fav-group-div .rz-multiselect-item {
+        display: flex !important;
+        align-items: center;
+    }
+
+        .fav-group-div .rz-multiselect-item .rz-chkbox {
+            min-width: 20px;
+        }
+
+    .fav-group-div .list-unit {
+        display: flex;
+        align-items: center;
+    }
+
+    li.rz-multiselect-item span:first-child {
+        width: 100%;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public List<GroupRecord> Groups { get; set; }
+    [Parameter]
+    public List<UserBoxLine> Lines { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<UserBoxLine> allLines;
+    IEnumerable<int> lineIds;
+    IEnumerable<int> gIds;
+    GroupRecord group;
+    List<UserBoxLine> groupLines { get; set; } = new List<UserBoxLine>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        allLines = await api.GetUserBox(Server);
+        if (Groups.Any())
+        {
+            group = Groups.First();
+            GroupChanged();
+        }
+        else
+        {
+            CreateNew();
+            Groups.Add(group);
+        }
+    }
+
+    void CreateNew()
+    {
+        group = new GroupRecord() { Name = "新建分组", Type = GroupType.Box, Server = Server, LineIds = new List<int>() };
+    }
+
+    void GroupChanged()
+    {
+        if (group != null)
+        {
+            groupLines = allLines.Where(f => group.LineIds.Contains(f.Id)).ToList();
+        }
+    }
+
+    void AddToGroup()
+    {
+        if (group != null && Groups.Contains(group) && !lineIds.IsNullOrEmpty())
+        {
+            group.LineIds = group.LineIds.Union(lineIds).ToList();
+            GroupChanged();
+        }
+    }
+
+    void RemoveFromGroup()
+    {
+        if (group != null && Groups.Contains(group) && !gIds.IsNullOrEmpty())
+        {
+            group.LineIds = group.LineIds.Except(gIds).ToList();
+            GroupChanged();
+        }
+    }
+
+    void AddGroup()
+    {
+        CreateNew();
+        Groups.Add(group);
+        GroupChanged();
+    }
+
+    async Task DeleteGroup()
+    {
+        if (group != null)
+        {
+            if (group.Id > 0)
+            {
+                var r = await api.DeleteGroupRecord(group.Id);
+                if (r)
+                {
+                    ntf.Notify(NotificationSeverity.Success, "已删除");
+                    Groups.Remove(group);
+                }
+            }
+            else
+            {
+                Groups.Remove(group);
+            }
+        }
+    }
+
+    async Task SaveGroup()
+    {
+        if (group != null && Groups.Contains(group))
+        {
+            var g = await api.AddOrUpdateGroupRecordAsync(group);
+            group.Id = g.Id;
+            group.UserId = g.UserId;
+            ntf.Notify(NotificationSeverity.Success, "已保存");
+        }
+    }
+}

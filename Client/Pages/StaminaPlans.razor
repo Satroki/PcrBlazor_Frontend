@@ -1,0 +1,658 @@
+﻿@page "/stamina"
+@inject ApiService api
+@inject ILocalStorageService storage
+@inject NotificationService ns
+@inject DialogService ds
+
+<RadzenCard Style="position:relative">
+    <div class="dashed-b-5 plan-header">
+        <div class="d-flex flex-wrap align-items-center">
+            <RadzenLabel Text="点心桌产能：" />
+            <RadzenNumeric Min="0" Max="100" Step="2" TValue="int" @bind-Value="plan.Table" Style="width:60px;margin-right:10px" />
+            <RadzenLabel Text="地下城家具数：" />
+            <RadzenNumeric Min="0" Max="100" Step="1" TValue="int" @bind-Value="plan.Dungeon" Style="width:60px;margin-right:10px" />
+            <RadzenLabel Text="每日任务：" />
+            <RadzenNumeric Min="0" Max="2000" Step="100" TValue="int" @bind-Value="plan.Daily" Style="width:70px;margin-right:10px" />
+            <RadzenLabel Text="购买次数：" />
+            <RadzenNumeric Min="0" Max="40" Step="1" TValue="int" @bind-Value="plan.Buy" Style="width:60px;margin-right:10px" />
+            <RadzenLabel Text="地图上限：" />
+            <RadzenNumeric Min="0" Step="1" TValue="int" @bind-Value="plan.AreaLimit" Change="filterHard" Style="width:60px;margin-right:10px" />
+            <RadzenLabel Text="@($"体力：{plan.GetTotalStamina()}")" Style="margin-right:15px" />
+        </div>
+        <div class="d-flex flex-wrap align-items-center">
+            <div class="f-33 d-flex align-items-center">
+                <RadzenCheckBox @bind-Value="hideQuest" />
+                <RadzenLabel Text="隐藏未选关卡" Style="margin:0 10px 0 5px" />
+                <RadzenCheckBox @bind-Value="hideItem" />
+                <RadzenLabel Text="隐藏未选道具" Style="margin:0 10px 0 5px" />
+            </div>
+            <div class="f-33 d-flex align-items-center justify-content-center">
+                @if (!loading)
+                {
+                    <p class="plan-summary">@GetSummary()</p>
+                }
+            </div>
+            <div class="f-33 d-flex align-items-center justify-content-end">
+                <RadzenButton Text="导入库存" ButtonStyle="ButtonStyle.Primary" Style="padding:0 10px;margin-right:10px" Click="Import" />
+                <RadzenButton Text="保存库存" ButtonStyle="ButtonStyle.Secondary" Style="padding:0 10px;margin-right:10px" Click="SavePieceStockAsync" />
+                <RadzenButton Text="导出规划" ButtonStyle="ButtonStyle.Info" Style="padding: 0 10px; margin-right: 10px" Click="Export" />
+                <RadzenButton Text="总览" ButtonStyle="ButtonStyle.Success" Style="padding:0 10px" Click="ShowPlan" />
+            </div>
+        </div>
+    </div>
+    @if (loading)
+    {
+        <ProgressRing />
+    }
+    else
+    {
+        <RadzenPanel AllowCollapse="true" Style="padding-left:0;padding-right:0">
+            <HeaderTemplate>
+                <div class="panel-header">调查&活动</div>
+            </HeaderTemplate>
+            <ChildContent>
+                <div class="d-flex flex-wrap" style="margin:0 -5px 0 -5px">
+                    @if (investigate1.Any())
+                    {
+                        <div class="quest-plan" hidden="@HideItemBlock(investigate1)">
+                            <div class="quest-plan-t">
+                                <img src="@(140001.GetEquipIcon())" style="width:64px;height:64px" />
+                                <div>
+                                    <p class="quest-plan-n">公主之心（碎片）</p>
+                                    <p class="quest-stock-pt" style="text-align:left" gap="true" hidden="@(heartSum==0)"> → @heartSum</p>
+                                </div>
+                            </div>
+                            @for (var i = 0; i < investigate1.Count; i++)
+                            {
+                                var qp = investigate1[i];
+                                var name = $"圣迹调查 Lv{i + 1}";
+                                <div class="quest-plan-q" hidden="@HideQuestPlan(qp)">
+                                    <RadzenCheckBox @bind-Value="qp.Enabled" TValue="bool" />
+                                    <RadzenLabel Text="@name" Style="margin-left: 5px;width:7em" />
+                                    <RadzenLabel Text="重置" Style="margin-right: 5px" />
+                                    <RadzenNumeric Min="0" Max="3" Step="1" TValue="int" @bind-Value="qp.ResetTimes" Style="width:60px;" />
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (investigate2.Any())
+                    {
+                        <div class="quest-plan" hidden="@HideItemBlock(investigate2)">
+                            <div class="quest-plan-t">
+                                <img src="@(25001.GetItemIcon())" style="width:64px;height:64px" />
+                                <div>
+                                    <p class="quest-plan-n">公主宝珠</p>
+                                    <p class="quest-stock-pt" style="text-align:left" gap="true" hidden="@(beadsSum==0)"> → @beadsSum</p>
+                                </div>
+                            </div>
+                            @for (var i = 0; i < investigate2.Count; i++)
+                            {
+                                var qp = investigate2[i];
+                                var name = $"神殿调查 Lv{i + 1}";
+                                <div class="quest-plan-q" hidden="@HideQuestPlan(qp)">
+                                    <RadzenCheckBox @bind-Value="qp.Enabled" TValue="bool" />
+                                    <RadzenLabel Text="@name" Style="margin-left: 5px;width:7em" />
+                                    <RadzenLabel Text="重置" Style="margin-right: 5px" />
+                                    <RadzenNumeric Min="0" Max="3" Step="1" TValue="int" @bind-Value="qp.ResetTimes" Style="width:60px;" />
+                                </div>
+                            }
+                        </div>
+                    }
+                    <div class="quest-plan" hidden="@HideItemBlock(events1)">
+                        <div class="quest-plan-t">
+                            <img src="@(31000.GetItemIcon())" style="width:64px;height:64px" />
+                            <p class="quest-plan-n">活动角色1</p>
+                        </div>
+                        @foreach (var qp in events1)
+                        {
+                            <div class="quest-plan-q" hidden="@HideQuestPlan(qp)">
+                                <RadzenCheckBox @bind-Value="qp.Enabled" TValue="bool" />
+                                <RadzenLabel Text="@qp.QuestName" Style="margin-left: 5px;width:3em" />
+                            </div>
+                        }
+                    </div>
+                    <div class="quest-plan" hidden="@HideItemBlock(events2)">
+                        <div class="quest-plan-t">
+                            <img src="@(31000.GetItemIcon())" style="width:64px;height:64px" />
+                            <p class="quest-plan-n">活动角色2</p>
+                        </div>
+                        @foreach (var qp in events2)
+                        {
+                            <div class="quest-plan-q" hidden="@HideQuestPlan(qp)">
+                                <RadzenCheckBox @bind-Value="qp.Enabled" TValue="bool" />
+                                <RadzenLabel Text="@qp.QuestName" Style="margin-left: 5px;width:3em" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </ChildContent>
+        </RadzenPanel>
+        @if (!vhardGroups.IsNullOrEmpty())
+        {
+            <RadzenPanel AllowCollapse="true" Style="padding-left:0;padding-right:0">
+                <HeaderTemplate>
+                    <div class="panel-header">高难</div>
+                </HeaderTemplate>
+                <ChildContent>
+                    <div class="d-flex flex-wrap" style="margin:0 -5px 0 -5px">
+                        @foreach (var qp in vhardGroups)
+                        {
+                            <div class="quest-plan" hidden="@HideItemBlock(qp)">
+                                <div class="quest-plan-t">
+                                    <img src="@qp.ItemId.GetItemIcon()" style="width:64px;height:64px" />
+                                    <p class="quest-plan-n">@nameDict[qp.ItemId - 31000]</p>
+                                </div>
+                                <div class="quest-plan-q" hidden="@HideQuestPlan(qp)">
+                                    <RadzenCheckBox @bind-Value="qp.Enabled" TValue="bool" Change="(v)=>EnableChange(qp,v)" />
+                                    <RadzenLabel Text="@qp.QuestName" Style="margin-left: 5px;width:3em" />
+                                    <RadzenCheckBox @bind-Value="qp.Reset" TValue="bool" Change="(v)=>ResetChange(qp,v)" />
+                                    <RadzenLabel Text="重置" Style="margin-left: 5px" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </ChildContent>
+            </RadzenPanel>
+        }
+        @if (!hardGroups.IsNullOrEmpty())
+        {
+            <RadzenPanel AllowCollapse="true" Style="padding-left:0;padding-right:0">
+                <HeaderTemplate>
+                    <div class="panel-header">困难</div>
+                </HeaderTemplate>
+                <ChildContent>
+                    <div class="d-flex flex-wrap" style="margin:0 -5px 0 -5px">
+                        @foreach (var g in hardGroups)
+                        {
+                            var ps = pieceDict[g.Key - 30000];
+
+                            <div class="quest-plan" hidden="@HideItemBlock(g)">
+                                <div class="quest-plan-t">
+                                    <img src="@g.Key.GetItemIcon()" style="width:64px;height:64px" />
+                                    <p class="quest-plan-n">@nameDict[ps.UnitUid]</p>
+                                </div>
+                                <div class="d-flex align-items-center" style="margin:-10px 0 10px 0">
+                                    <RadzenNumeric TValue="int" @bind-Value="ps.Stock" Min="0" Style="width:64px" />
+                                    <p class="quest-stock-pt" gap="@ps.Gap" hidden="@(ps.Target==0)"> → @ps.Target</p>
+                                </div>
+                                @if (ps.Line != null)
+                                {
+                                    <div class="d-flex align-items-center" style="margin:-5px 0 5px 0">
+                                        <p class="quest-stock-pn" style="margin-right:10px" hidden="@ps.HideRarity">@ps.RarityNote</p>
+                                        <p class="quest-stock-pn" style="margin-right:10px" hidden="@ps.HideUnique">@ps.UniqueNote</p>
+                                        <p class="quest-stock-pn" hidden="@ps.HideBreak">Lv++</p>
+                                    </div>
+                                }
+                                @foreach (var qp in g)
+                                {
+                                    <div class="quest-plan-q" hidden="@HideQuestPlan(qp)">
+                                        <RadzenCheckBox @bind-Value="qp.Enabled" TValue="bool" Change="(v)=>EnableChange(qp,v)" />
+                                        <RadzenLabel Text="@qp.QuestName" Style="margin-left: 5px;width:3em" />
+                                        <RadzenCheckBox @bind-Value="qp.Reset" TValue="bool" Change="(v)=>ResetChange(qp,v)" />
+                                        <RadzenLabel Text="重置" Style="margin-left: 5px" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </ChildContent>
+            </RadzenPanel>
+        }
+        <RadzenPanel AllowCollapse="true" Style="padding-left:0;padding-right:0">
+            <HeaderTemplate>
+                <div class="panel-header">外传</div>
+            </HeaderTemplate>
+            <ChildContent>
+                <div class="d-flex flex-wrap" style="margin:0 -5px 0 -5px">
+                    @foreach (var se in shioriEvents)
+                    {
+                        <div>
+                            <p class="ev-title">@se.Title</p>
+                            <div class="d-flex">
+                                @foreach (var (unit, plans) in se.GetUnitPlans())
+                                {
+                                    var ps = pieceDict[unit - 30000];
+                                    <div class="quest-plan" hidden="@HideItemBlock(plans)">
+                                        <div class="quest-plan-t">
+                                            <img src="@unit.GetItemIcon()" style="width:64px;height:64px" />
+                                            <p class="quest-plan-n">@nameDict[ps.UnitUid]</p>
+                                        </div>
+                                        <div class="d-flex align-items-center" style="margin:-10px 0 10px 0">
+                                            <RadzenNumeric TValue="int" @bind-Value="ps.Stock" Min="0" Style="width:64px" />
+                                            <p class="quest-stock-pt" gap="@ps.Gap" hidden="@(ps.Target==0)"> → @ps.Target</p>
+                                        </div>
+                                        @if (ps.Line != null)
+                                        {
+                                            <div class="d-flex align-items-center" style="margin:-5px 0 5px 0">
+                                                <p class="quest-stock-pn" style="margin-right:10px" hidden="@ps.HideRarity">@ps.RarityNote</p>
+                                                <p class="quest-stock-pn" style="margin-right:10px" hidden="@ps.HideUnique">@ps.UniqueNote</p>
+                                                <p class="quest-stock-pn" hidden="@ps.HideBreak">Lv++</p>
+                                            </div>
+                                        }
+                                        @foreach (var qp in plans)
+                                        {
+                                            <div class="quest-plan-q" hidden="@HideQuestPlan(qp)">
+                                                <RadzenCheckBox @bind-Value="qp.Enabled" TValue="bool" Change="(v)=>EnableChange(qp,v)" />
+                                                <RadzenLabel Text="@qp.QuestName" Style="margin-left: 5px;width:3em" />
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </ChildContent>
+        </RadzenPanel>
+    }
+</RadzenCard>
+
+<style>
+    .panel-header {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: tomato;
+    }
+
+    .quest-plan {
+        border: 1px solid #dddddd;
+        border-radius: 5px;
+        padding: 10px;
+        margin: 5px;
+    }
+
+    .quest-plan-t {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+        .quest-plan-t p {
+            margin-bottom: 0;
+            margin-left: 0.5em;
+            text-align: center;
+            white-space: pre;
+        }
+
+    .quest-plan-q {
+        display: flex;
+        align-items: center;
+    }
+
+    .plan-header {
+        position: sticky;
+        top: 51px;
+        background-color: white;
+        z-index: 10;
+        padding-top: 5px;
+        margin-top: -5px;
+    }
+
+    .plan-summary {
+        position: sticky;
+        font-size: 1.125em;
+        white-space: pre;
+        color: crimson;
+        margin: 5px 0 !important;
+        font-weight: bold;
+    }
+
+    .quest-stock-pn {
+        margin-bottom: 0;
+        font-size: 0.875rem;
+        color: dodgerblue;
+    }
+
+    .quest-stock-pt {
+        margin: 0 0 0 8px;
+        font-size: 1rem;
+        color: dodgerblue;
+    }
+
+        .quest-stock-pt[gap] {
+            color: red;
+        }
+
+    .ev-title {
+        margin-left: 5px;
+        color: #ff85ad;
+    }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    StaminaPlan plan = new StaminaPlan();
+    Dictionary<int, string> nameDict;
+    List<AreaInfo> areas;
+    List<ShioriEvent> shioriEvents;
+    List<QuestPlan> hard;
+    List<QuestPlan> vhard;
+    List<QuestPlan> investigate1;
+    List<QuestPlan> investigate2;
+    List<QuestPlan> events;
+    List<QuestPlan> events1;
+    List<QuestPlan> events2;
+    List<QuestPlan> eventsOld;
+    List<QuestPlan> allQuests;
+    bool loading = true;
+    int? uid;
+    bool hideItem;
+    bool hideQuest;
+    int heartSum = 0;
+    int beadsSum = 0;
+    int[] spUnits;
+
+    IEnumerable<IGrouping<int, QuestPlan>> hardGroups;
+    IEnumerable<QuestPlan> vhardGroups;
+    Dictionary<int, PieceStock> pieceDict = new Dictionary<int, PieceStock>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        var state = await authenticationStateTask;
+        uid = state.User.GetUserId();
+        plan = await GetStaminaPlanAsync();
+        areas = await api.GetAreaInfos(Server);
+        var units = await api.GetAllUnitDatasAsync(Server);
+        spUnits = (await api.GetServerInfoAsync(Server)).LimitedUnits;
+        nameDict = units.ToDictionary(u => u.UnitId / 100, u => u.UnitName.Replace("（", "\n（"));
+        hard = areas.Where(a => a.AreaType == 12).SelectMany(a => a.Quests).Select(q => new QuestPlan(q, "困难"))
+            .Where(q => q.ItemId > 0).ToList();
+        vhard = areas.Where(a => a.AreaType == 13).SelectMany(a => a.Quests).Select(q => new QuestPlan(q, "高难"))
+            .Where(q => q.ItemId > 0).ToList();
+        shioriEvents = await api.GetShioriEvents(Server);
+        eventsOld = QuestPlan.GetEventQuests(shioriEvents).ToList();
+
+        await InitPiecesDict();
+
+        filterHard(plan.AreaLimit);
+        investigate1 = areas.Where(a => a.AreaType == 18).SelectMany(a => a.Quests).Select(q => new QuestPlan(q, "圣迹")).ToList();
+        investigate2 = areas.Where(a => a.AreaType == 19).SelectMany(a => a.Quests).Select(q => new QuestPlan(q, "神殿")).ToList();
+        events = QuestPlan.GetEventQuests().ToList();
+        events1 = new List<QuestPlan> { events[0], events[2], events[4] };
+        events2 = new List<QuestPlan> { events[1], events[3] };
+        allQuests = hard.Concat(vhard).Concat(investigate1).Concat(investigate2).Concat(events).Concat(eventsOld).ToList();
+        SetPlanQuest();
+        loading = false;
+    }
+
+    async Task InitPiecesDict()
+    {
+        pieceDict.Clear();
+        heartSum = 0;
+        beadsSum = 0;
+        if (uid > 0)
+        {
+            var si = await api.GetServerInfoAsync(Server);
+            var box = await api.GetUserBox(Server);
+            foreach (var p in box.Select(b => new PieceStock(b, spUnits.Contains(b.UnitId), si.UniqueEquipmentRankup)))
+            {
+                pieceDict.Add(p.UnitUid, p);
+                heartSum += p.Heart;
+                beadsSum += p.Beads;
+            }
+        }
+        var ps = await GetPieceStockAsync();
+        foreach (var p in ps)
+        {
+            if (!pieceDict.ContainsKey(p.UnitUid))
+                pieceDict.Add(p.UnitUid, p);
+        }
+        foreach (var qp in hard)
+        {
+            if (!pieceDict.ContainsKey(qp.UnitUid))
+                pieceDict.Add(qp.UnitUid, new PieceStock { UnitUid = qp.UnitUid });
+        }
+        foreach(var qp in eventsOld)
+        {
+            if (!pieceDict.ContainsKey(qp.UnitUid))
+                pieceDict.Add(qp.UnitUid, new PieceStock { UnitUid = qp.UnitUid });
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender && !loading)
+        {
+            await SaveStaminaPlanAsync();
+        }
+    }
+
+    void SetPlanQuest()
+    {
+        if (!plan.QuestPlans.IsNullOrEmpty())
+        {
+            foreach (var q in plan.QuestPlans)
+            {
+                var qp = allQuests.FirstOrDefault(v => v.QuestId == q.QuestId);
+                if (qp != null)
+                {
+                    qp.Enabled = q.Enabled;
+                    qp.Reset = q.Reset;
+                    qp.ResetTimes = q.ResetTimes;
+                }
+            }
+        }
+    }
+
+    void filterHard(int lv)
+    {
+        hardGroups = hard?.Where(h => h.QuestLevel <= lv).GroupBy(h => h.ItemId);
+        vhardGroups = vhard?.Where(v => v.QuestLevel <= lv);
+    }
+
+    void EnableChange(QuestPlan q, bool b)
+    {
+        if (!b)
+            q.Reset = false;
+    }
+
+    void ResetChange(QuestPlan q, bool b)
+    {
+        if (b)
+            q.Enabled = true;
+    }
+
+    string GetSummary()
+    {
+        if (loading)
+            return null;
+        var (total, st, gm) = GetToatlConsumeGem();
+        return $"剩余：{total - st}    宝石：{gm}";
+    }
+
+    (int, int, int) GetToatlConsumeGem()
+    {
+        var st = 0;
+        var gm = 0;
+        foreach (var q in hard.Concat(vhard).Concat(events))
+        {
+            if (q.Enabled)
+            {
+                st += q.Stamina * 3;
+                if (q.Reset)
+                {
+                    st += q.Stamina * 3;
+                    gm += 50;
+                }
+            }
+        }
+        foreach (var q in investigate1.Concat(investigate2))
+        {
+            if (q.Enabled)
+            {
+                st += q.Stamina * 5;
+                if (q.ResetTimes > 0)
+                {
+                    st += q.Stamina * 5 * q.ResetTimes;
+                    gm += 50 * q.ResetTimes;
+                }
+            }
+        }
+        foreach (var sp in eventsOld)
+        {
+            if (sp.Enabled)
+            {
+                st += sp.Stamina * 5;
+            }
+        }
+        var total = plan.GetTotalStamina();
+        gm += plan.GetTotalGem(Server);
+        return (total, st, gm);
+    }
+
+    async Task<StaminaPlan> GetStaminaPlanAsync()
+    {
+        var key = $"StaminaPlan_{Server}_{uid}";
+        var p = await storage.GetItemAsync<StaminaPlan>(key);
+        p = p ?? new StaminaPlan(Server);
+        p.UserId = uid ?? 0;
+        return p;
+    }
+
+    async Task SaveStaminaPlanAsync()
+    {
+        var key = $"StaminaPlan_{Server}_{uid}";
+        plan.QuestPlans = allQuests?.Where(q => q.Enabled).ToList();
+        await storage.SetItemAsync(key, plan);
+    }
+
+    async Task<List<PieceStock>> GetPieceStockAsync()
+    {
+        var key = $"PieceStock_{Server}_{uid}";
+        var p = await storage.GetItemAsync<List<PieceStock>>(key);
+        return p ?? new();
+    }
+
+    async Task SavePieceStockAsync()
+    {
+        var key = $"PieceStock_{Server}_{uid}";
+        await storage.SetItemAsync(key, pieceDict.Values.Where(p => p.Line == null).ToList());
+
+        var ps = pieceDict.Values.Where(p => p.Line != null && p.Stock != p.Line.Pieces).ToList();
+        if (ps.Any())
+        {
+            if (await api.UpdateUserBoxPiecesAsync(ps))
+            {
+                foreach (var p in ps)
+                {
+                    p.Line.Pieces = p.Stock;
+                }
+            }
+        }
+        ns.Notify(NotificationSeverity.Success, "保存成功");
+    }
+
+    async Task Import()
+    {
+        var r = await ds.OpenAsync<ImportStock>("导入数据", new Dictionary<string, object> { ["PieceMode"] = true });
+        if (r is Dictionary<int, int> dict)
+        {
+            foreach (var (id, num) in dict)
+            {
+                if (pieceDict.TryGetValue(id - 30000, out var ps))
+                {
+                    ps.Stock = num;
+                }
+            }
+        }
+    }
+
+    bool HideQuestPlan(QuestPlan q)
+    {
+        return hideQuest && !q.Enabled;
+    }
+
+    bool HideItemBlock(IEnumerable<QuestPlan> quests)
+    {
+        return hideItem && quests.All(q => !q.Enabled);
+    }
+
+    bool HideItemBlock(QuestPlan q)
+    {
+        return hideItem && !q.Enabled;
+    }
+
+    async Task Export()
+    {
+        var sb = new System.Text.StringBuilder();
+        if (investigate1.Any(q => q.Enabled))
+        {
+            sb.AppendLine("————圣迹————");
+            foreach (var q in investigate1.Where(q => q.Enabled))
+            {
+                sb.AppendLine($"{q.QuestName}  重置 {q.ResetTimes} 次");
+            }
+        }
+        if (investigate2.Any(q => q.Enabled))
+        {
+            sb.AppendLine("————神殿————");
+            foreach (var q in investigate2.Where(q => q.Enabled))
+            {
+                sb.AppendLine($"{q.QuestName}  重置 {q.ResetTimes} 次");
+            }
+        }
+        if (events.Any(q => q.Enabled))
+        {
+            sb.AppendLine("————活动————");
+            foreach (var q in events.Where(q => q.Enabled))
+            {
+                sb.AppendLine($"{q.QuestName}");
+            }
+        }
+        if (vhard.Any(q => q.Enabled))
+        {
+            sb.AppendLine("————高难————");
+            foreach (var q in vhard.Where(q => q.Enabled))
+            {
+                sb.AppendLine($"{q.QuestName}  {(q.Reset ? "重置" : null)}");
+            }
+        }
+        if (hard.Any(q => q.Enabled))
+        {
+            sb.AppendLine("————困难————");
+            foreach (var q in hard.Where(q => q.Enabled))
+            {
+                sb.AppendLine($"{q.QuestName}  {(q.Reset ? "重置" : null)}");
+            }
+        }
+        if (eventsOld.Any(q => q.Enabled))
+        {
+            sb.AppendLine("————外传————");
+            foreach (var se in shioriEvents)
+            {
+                var sec = se.GetAllPlans().Where(p => p.Enabled).Select(p => p.QuestSection);
+                if (sec.Any())
+                {
+                    sb.AppendLine(se.Title);
+                    sb.AppendJoin(", ", sec).AppendLine();
+                }
+            }
+        }
+        if (sb.Length > 0)
+        {
+            var (ts, cs, gm) = GetToatlConsumeGem();
+            sb.AppendLine("——————————");
+            sb.AppendLine($"购买体力：{plan.Buy} 次");
+            sb.AppendLine($"总体力：{ts}  总消耗：{cs}  剩余：{ts - cs}  宝石消耗：{gm}");
+            var txt = sb.ToString();
+            await api.SaveStringAsFile($"体力规划{DateTime.Today:yyMMdd}.txt", txt);
+        }
+    }
+
+    void ShowPlan()
+    {
+        var list = new List<QuestPlan>();
+        list.AddRange(investigate1.Where(p => p.Enabled));
+        list.AddRange(investigate2.Where(p => p.Enabled));
+        list.AddRange(events.Where(p => p.Enabled));
+        list.AddRange(vhard.Where(p => p.Enabled).OrderByDescending(p => p.QuestLevel).ThenByDescending(p => p.QuestSection));
+        list.AddRange(hard.Where(p => p.Enabled).OrderByDescending(p => p.QuestLevel).ThenByDescending(p => p.QuestSection));
+        var list2 = eventsOld.Where(p => p.Enabled).OrderBy(p => p.QuestId).ToList();
+        ds.Open<StaminaPlansView>("规划总览", new Dictionary<string, object> { ["Plans"] = list, ["ShioriPlans"] = list2 });
+    }
+}

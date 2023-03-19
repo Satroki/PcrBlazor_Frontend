@@ -1,0 +1,41 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>公主连结 Box</title>
+    <base href="/" />
+    <link rel="stylesheet" href="https://fcdn.satroki.tech/_content/Radzen.Blazor/css/default.css">
+    <link href="/css/app.css" rel="stylesheet" />
+    <link href="manifest.json" rel="manifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+</head>
+
+<body>
+    <div id="app">
+        <div style="text-align:center;width:100vw;height:100vh;background:#fefefe;display:flex;align-items:center;justify-content:center">
+            <div>
+                <img src="https://fcdn.satroki.tech/loading.gif" />
+                <p style="color:gray;font-size:1rem">载入中……</p>
+                <p style="color:gray;font-size:0.875rem;margin:30px 0 5px 0">若长时间无法打开请参考 <a href="https://bbs.nga.cn/read.php?tid=22432464" target="_blank">发布帖主楼</a></p>
+                <p style="color:gray;font-size:0.875rem">推荐浏览器：<a target="_blank" href="https://www.microsoft.com/zh-cn/edge">Microsoft Edge</a><a target="_blank" href="https://www.google.cn/chrome/" style="margin:0 10px">Google Chrome</a><a target="_blank" href="http://www.firefox.com.cn/download/">Firefox</a></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        发生错误
+        <a href="" class="reload">刷新</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    <div id="div-update" class="div-update-top" hidden onclick="update()">正在更新</div>
+
+    <script src="https://fcdn.satroki.tech/_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+    <script src="https://fcdn.satroki.tech/_content/TG.Blazor.IndexedDB/indexedDb.Blazor.js"></script>
+    <script src="https://fcdn.satroki.tech/_framework/blazor.webassembly.js" autostart="false"></script>
+    <script src="https://fcdn.satroki.tech/solver.js"></script>
+    <script src="https://fcdn.satroki.tech/site.js"></script>
+</body>
+
+</html>

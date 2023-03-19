@@ -1,0 +1,11 @@
+﻿<AttackPatternCard UnitData="@Unit" />
+<div style="margin-top:10px">
+    <SkillCardBoss Skill="@Unit.UnitSkillModel.Main1" SkillType="Main 1" />
+    <SkillCardBoss Skill="@Unit.UnitSkillModel.Main2" SkillType="Main 2" />
+    <SkillCardBoss Skill="@Unit.UnitSkillModel.Main3" SkillType="Main 3" />
+</div>
+
+@code {
+    [Parameter]
+    public UnitData Unit { get; set; }
+}

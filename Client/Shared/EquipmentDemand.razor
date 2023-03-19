@@ -1,0 +1,131 @@
+﻿@inject ApiService api
+@inject ArmoryService arm
+@inject TooltipHelperService ts
+@inject DialogService dialog
+
+<div class="d-flex align-items-center">
+    <RadzenCheckBox TValue="bool?" TriState="true" @bind-Value="isRaw" Change="Filter" Style="margin:0 5px 0 0" />
+    <RadzenLabel Text="仅材料" />
+    @*@if (Server == "cn")
+    {
+        <RadzenCheckBox TValue="bool" @bind-Value="useJp" Change="Calc" Style="margin:0 5px 0 10px" />
+        <RadzenLabel Text="减负后" MouseEnter="e=>ts.ShowString(e,note)" MouseLeave="ts.Close" />
+    }*@
+    <RadzenCheckBox TValue="bool" @bind-Value="withStock" Change="Calc" Style="margin:0 5px 0 10px" />
+    <RadzenLabel Text="减库存" MouseEnter="e=>ts.ShowString(e,note2)" MouseLeave="ts.Close" />
+    <div class="f-1"></div>
+    <RadzenLabel Text="装等范围：" />
+    <RadzenNumeric TValue="int" Min="1" Max="@Constants.EquipMaxRank" @bind-Value="MinLevel" Change="Filter" Style="width:70px" />
+    <p style="margin:0 5px">-</p>
+    <RadzenNumeric TValue="int" Min="@MinLevel" Max="@Constants.EquipMaxRank" @bind-Value="MaxLevel" Change="Filter" Style="width:70px" />
+</div>
+<p style="color: #88989b; font-size: 0.875rem;margin:5px 0 5px 0">计算方式：日服全角色全Rank需求 - 当前Box已有角色已达成Rank <span hidden="@(!withStock)">- 库存</span></p>
+@if (datas == null)
+{
+    <ProgressRing />
+}
+else
+{
+    <RadzenGrid AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                AllowSorting="true" Data="@datas" TItem="SimpleEquipmentData" EmptyText="无匹配项"
+                Style="font-size:1.5em">
+        <Columns>
+            <RadzenGridColumn TItem="SimpleEquipmentData" Property="EquipmentId" Title="图标" Filterable="false" Width="84px">
+                <Template Context="d">
+                    <img src="@d.EquipmentId.GetEquipIcon()" style="width:64px;height:64px;cursor:pointer" @onclick="_=>ShowDrop(d.EquipmentId)" />
+                </Template>
+            </RadzenGridColumn>
+            <RadzenGridColumn TItem="SimpleEquipmentData" Property="EquipmentName" Title="名称">
+                <Template Context="d">
+                    <p class="demand-p">@d.EquipmentName</p>
+                </Template>
+            </RadzenGridColumn>
+            <RadzenGridColumn TItem="SimpleEquipmentData" Property="ConsumeNum" Title="需求量" TextAlign="TextAlign.Right" Width="75px">
+                <Template Context="d">
+                    <p class="demand-p">@d.ConsumeNum</p>
+                </Template>
+            </RadzenGridColumn>
+        </Columns>
+    </RadzenGrid>
+}
+
+<style>
+    .demand-p {
+        font-size: 1.5em;
+        margin: 0;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [Parameter]
+    public int MinLevel { get; set; }
+    public int MaxLevel { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    EquipmentStatusSet statusSet;
+    IEnumerable<SimpleEquipmentData> datas;
+    IEnumerable<SimpleEquipmentData> allDatas;
+    bool withBox;
+    bool withStock = true;
+    bool? isRaw = null;
+    bool useJp = false;
+    string note = "按日服装备合成表计算";
+    string note2 = "计算结果中减去库存数量";
+    protected override void OnParametersSet()
+    {
+        MaxLevel = Constants.EquipMaxRank;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await authenticationStateTask;
+        withBox = state.User.Identity.IsAuthenticated;
+        await Calc();
+    }
+
+    async Task Calc()
+    {
+        datas = null;
+        var result = await arm.CalcEquipmentDemand(Server, withBox, withStock, useJp);
+        statusSet = await api.GetEquipmentStatusSetAsync();
+        allDatas = result.OrderByDescending(k => k.Value)
+            .Select(kv => new SimpleEquipmentData
+            {
+                EquipmentId = kv.Key,
+                ConsumeNum = kv.Value,
+                EquipmentName = statusSet.TryGetName(kv.Key, Server),
+                PromotionLevel = kv.Key.GetEquipmentPromotionLevel()
+            });
+        Filter();
+    }
+
+    void Filter()
+    {
+        var q = allDatas.Where(d => d.PromotionLevel >= MinLevel && d.PromotionLevel <= MaxLevel);
+        if (isRaw.HasValue)
+            q = q.Where(d => d.IsRaw == isRaw);
+        datas = q;
+    }
+
+    void ShowDrop(int id)
+    {
+        var name = statusSet.TryGetName(id, Server);
+        if (!name.IsNullOrEmpty())
+        {
+            if (id < 11_0000)
+            {
+                if (statusSet.Contains(id + 10000))
+                    id = id + 10000;
+                else if (statusSet.Contains(id + 20000))
+                    id = id + 20000;
+            }
+            dialog.Open<ItemDrop>(name, new Dictionary<string, object>
+            {
+                ["ItemId"] = id
+            }, new DialogOptions { Width = "700px" });
+        }
+    }
+}

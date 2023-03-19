@@ -1,0 +1,583 @@
+﻿@inject ArmoryService arm
+@inject NotificationService nty
+@inject DialogService dialog
+@inject ApiService api
+@inject ILocalStorageService storage
+@inject TooltipHelperService ts
+
+@implements IAsyncDisposable
+
+<div>
+    <div class="d-flex flex-row">
+        <div class="d-flex flex-wrap align-items-center">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="规划" Click="Solve" Style="padding:0 10px" />
+            <RadzenLabel Text="普通倍率" Style="margin:0 5px 0 10px" />
+            <RadzenNumeric Min="0" Max="5" TValue="int" @bind-Value="sr.Normal" Style="width:60px" />
+            <RadzenLabel Text="困难倍率" Style="margin:0 5px 0 10px" />
+            <RadzenNumeric Min="0" Max="5" TValue="int" @bind-Value="sr.Hard" Style="width:60px" />
+            <RadzenLabel Text="困难次数" Style="margin:0 5px 0 10px" title="每张困难图的刷取次数上限" Visible="@(sr.Hard>0)" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.HardTimes" Style="width:60px" Visible="@(sr.Hard>0)" />
+            <RadzenLabel Text="地图上限" Style="margin:0 5px 0 10px" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.AreaLimit" Style="width:60px" />
+            @if (api.Settings.ShowForecast && sr.AreaLimit > 0)
+            {
+                <RadzenLabel Text="预测上限" Style="margin:0 5px 0 10px" MouseEnter="@(e=>ts.ShowString(e,"未来地图上限：规划时减扣未来地图掉落期望"))" MouseLeave="ts.Close" />
+                <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.Forecast" Style="width:60px" />
+            }
+        </div>
+        <div class="f-1 d-flex flex-wrap align-items-center justify-content-end" style="margin:10px 0">
+            <RadzenCheckBox @bind-Value="consumeMode" />
+            <p style="margin:0 10px 0 5px" title="切换显示材料或成品">材料</p>
+            <RadzenCheckBox @bind-Value="showOver" />
+            <p style="margin:0 10px 0 5px" title="切换是否显示溢出">溢出</p>
+            <p style="margin:0 5px 0 0px" title="@("调整最低装等; "+ Constants.EquipRankDesp)">装等</p>
+            <RadzenNumeric Min="1" Max="@Constants.EquipMaxRank" TValue="int" @bind-Value="sr.MinLevel" Style="width:60px" title="@Constants.EquipRankDesp" />
+            <RadzenButton ButtonStyle="ButtonStyle.Info" Text="备份" title="备份库存信息到服务器" Click="SaveToServer"
+                          Style="margin-left:10px;padding:0 10px" />
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="还原" title="用服务器备份信息覆盖本地" Click="GetFromServer"
+                          Style="margin-left: 10px; padding: 0 10px " />
+        </div>
+    </div>
+    <div class="d-flex flex-row flex-wrap">
+        @if (consume != null)
+        {
+            var data = consume.Where(c => consumeMode ? !c.CraftFlg : c.CraftFlg).OrderByDescending(d => d.EquipmentId % 10000);
+            foreach (var se in data)
+            {
+                @if (se.PromotionLevel >= sr.MinLevel)
+                {
+                    if (showOver || se.StockNum < se.ConsumeNum)
+                    {
+                        <div class="equip-div">
+                            <RadzenImage Path="@se.EquipmentId.GetEquipIcon()"
+                                         MouseEnter="e=> MouseOver(e,se.EquipmentId) " MouseLeave="MouseOut"
+                                         Style="cursor:pointer" @onclick="()=>ShowDrop(se.EquipmentId)" />
+                            <p>需求：@se.ConsumeNum</p>
+                            @if (se.Gap <= 0)
+                            {
+                                <p style="color:mediumseagreen">溢出：@(-se.Gap)</p>
+                            }
+                            else
+                            {
+                                <p style="color:red">缺口：@se.Gap</p>
+                            }
+                            <div class="d-flex flex-row">
+                                <NumInput Min="0" Value="@se.StockNum"
+                                          Change="@(v => StockChanged(se.EquipmentId,v))"
+                                          Style="width:96px;margin-top:5px" />
+                            </div>
+                        </div>
+                    }
+                }
+            }
+        }
+        else
+        {
+            <ProgressRing />
+        }
+    </div>
+    @if (solveResults != null)
+    {
+        <div class="dashed-t-5">
+            <div class="dashed-b-5 d-flex align-items-center" style="padding-top:10px;position:relative">
+                <RadzenDropDown AllowClear="false" AllowFiltering="false" Multiple="false" Placeholder="排序" TextProperty="Key" ValueProperty="Key" TValue="string"
+                                Change="OrderChanged" Data="@fr.Sorters" @bind-Value="orderKey"
+                                Style="width:110px;margin-right:10px" />
+                <RadzenTextBox Placeholder="搜索..." @bind-Value="@searchKey" Change="Filter"
+                               Style="width:110px;margin-right:10px" />
+                <p class="solve-title text-center f-1" style="margin:0 110px 0 0">计算结果：共扫荡 @(solveResults.Sum(r=>r.Times)) 次，消耗体力 @(solveResults.Sum(r=>r.Stamina))</p>
+                <div style="width:130px;text-align:right">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="规划" Click="Solve" Style="padding:0 10px" />
+                    <RadzenButton Text="导出" Click="Export" ButtonStyle="ButtonStyle.Info" Style="padding: 0 10px; margin-left: 10px" />
+                </div>
+                <div class="solve-tooltip" style="z-index:100">
+                    <i @ref="helpi" class="rzi" @onmouseover="_=>ts.ShowString(helpi,help)"
+                       @onmouseleave="ts.Close">help_outline</i>
+                </div>
+            </div>
+            @foreach (var r in solveResults)
+            {
+                <div class="d-flex flex-row align-items-center solve-div dashed-b-5">
+                    <div class="solve-div-q">
+                        <div>@r.QuestName</div>
+                        <div>@r.Times 次</div>
+                    </div>
+                    <div class="solve-div-q">
+                        <p>需求：@r.AllRequirements</p>
+                        <p>效率：@(r.Effective)%</p>
+                        <p>优先：@r.Priority</p>
+                        <p>推荐：@r.Recommend</p>
+                    </div>
+                    <div class="d-flex flex-row align-items-start flex-wrap">
+                        @for (int i = 0; i < r.Equipments.Count; i++)
+                        {
+                            var se = r.Equipments[i];
+                            var eid = se.EquipmentId;
+                            var uq = r.UniqueIds.Contains(eid);
+                            <div class="equip-div solve-equip-div" unique-drop="@uq">
+                                <RadzenImage Path="@eid.GetEquipIcon()" Style="cursor:pointer" MouseEnter="e=>MouseOver(e,eid)" MouseLeave="MouseOut"
+                                             @onclick="()=>ShowDrop(eid)" />
+                                <p class="solve-equip-div-p">+@r.Expected[i] /@consumeDict[eid].ConsumeNum</p>
+                                <NumInput Min="0" Value="@se.StockNum"
+                                          Change="@(v => StockChanged(eid,v))"
+                                          Style="width:96px;" unique-drop="@uq" />
+                                @if (showAdd)
+                                {
+                                    <RadzenNumeric Value="@se.StockDelta" TValue="int?" Change="(v)=> StockAdd(eid,v)"
+                                                   Placeholder="+" ShowUpDown="false"
+                                                   Style="width:96px;" unique-drop="@uq" />
+                                }
+                            </div>
+                        }
+                        @if (r.RestEquipments != null)
+                            @foreach (var se in r.RestEquipments)
+                            {
+                                if (api.Settings.FilterByproduct && se.PromotionLevel < sr.MinLevel)
+                                    continue;
+                                <div class="equip-div solve-equip-div">
+                                    <RadzenImage Path="@se.EquipmentId.GetEquipIcon()" Style="cursor:pointer;opacity:0.5" @onclick="()=>ShowDrop(se.EquipmentId)"
+                                                 MouseEnter="e=>ts.ShowEquipmentStatus(e,se.EquipmentId,Server)" MouseLeave="ts.Close" />
+                                    <NumInput Min="0" Value="@se.StockNum"
+                                              Change="@(v => StockChanged(se.EquipmentId,v))"
+                                              Style="width:96px;" />
+                                    @if (showAdd)
+                                    {
+                                        <RadzenNumeric Value="@se.StockDelta" TValue="int?" Change="(v)=> StockAdd(se.EquipmentId,v)"
+                                                       Placeholder="+" ShowUpDown="false"
+                                                       Style="width:96px;" />
+                                    }
+                                </div>
+                            }
+                    </div>
+                </div>
+            }
+            @if (!noDropIds.IsNullOrEmpty())
+            {
+                <div class="d-flex flex-row align-items-center solve-div dashed-b-5 position-relative">
+                    <div class="solve-div-q" @ref="noDropDiv" @onmouseenter="@(_=>ts.ShowString(noDropDiv,"可在未来获取，或是因设置忽略"))" @onmouseleave="ts.Close">
+                        <div>无法</div>
+                        <div>获取</div>
+                    </div>
+                    <div class="d-flex flex-row align-items-center flex-wrap">
+                        @foreach (var did in noDropIds)
+                        {
+                            <div class="equip-div solve-equip-div">
+                                <RadzenImage Path="@did.GetEquipIcon()" MouseEnter="e=>MouseOver(e,did)" MouseLeave="MouseOut"
+                                             @onclick="()=>ShowDrop(did)" Style="cursor:pointer" />
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="equip-unit-tooltip">
+    <div class="d-flex flex-wrap">
+        @if (!icons.IsNullOrEmpty())
+        {
+            @foreach (var uec in icons)
+            {
+                <div class="equip-unit-i">
+                    <img src="@uec.Icon.GetUnitIcon()" />
+                    <span class="@uec.Class">@uec.Consume</span>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .solve-tooltip {
+        position: absolute;
+        top: 60px;
+    }
+
+        .solve-tooltip i {
+            color: dodgerblue;
+            cursor: pointer;
+        }
+
+    .equip-unit-tooltip {
+        position: absolute;
+        right: 20px;
+        bottom: 10px;
+        background-color: rgba(0, 0, 0,0.3);
+        border-radius: 5px;
+        max-width: 530px;
+        padding: 1px;
+    }
+
+        .equip-unit-tooltip span.red {
+            color: red;
+        }
+
+        .equip-unit-tooltip span.green {
+            color: seagreen;
+        }
+
+    .equip-unit-i {
+        position: relative;
+        margin: 1px;
+    }
+
+        .equip-unit-i img {
+            width: 64px;
+            height: 64px;
+        }
+
+        .equip-unit-i span {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            padding: 1px 3px;
+            line-height: 1rem;
+            border-radius: 0 0 4px 0;
+            border-width: 0;
+            background-color: rgba(255,255,255,0.8);
+        }
+</style>
+
+@code {
+    [Parameter]
+    public IEnumerable<UserBoxLine> Box { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    List<SimpleEquipmentData> consume;
+    Dictionary<int, SimpleEquipmentData> consumeDict;
+    Dictionary<int, SimpleEquipmentData> allEquips;
+    SolveRequest sr = new SolveRequest();
+    List<SolveResult> solveResultsBak;
+    List<SolveResult> solveResults;
+    List<int> noDropIds;
+    bool consumeMode = true;
+    bool showOver = false;
+    UnitEquipmentConsumeDict ueDict;
+    IEnumerable<UnitEquipmentConsume> icons;
+    bool iconFlag;
+    SolveFilterRecord fr = new SolveFilterRecord();
+    string orderKey;
+    string searchKey;
+    bool showAdd;
+    EquipmentStatusSet statusSet;
+    ElementReference noDropDiv;
+
+    readonly string help = "次数：由线性规划计算得出的最优次数\n需求：有效掉落总需求量\n效率：有效掉落总概率\n优先：根据角色优先级计算的装备优先度\n推荐：推荐刷到该次数后重新计算";
+    ElementReference helpi;
+
+    HashSet<SimpleEquipmentData> changedDatas = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var s = api.Settings;
+        var areas = s.GetAreaSetting(Server);
+        sr.Normal = areas.SolveNormal;
+        sr.Hard = areas.SolveHard;
+        sr.HardTimes = areas.SolveHardTimes;
+        sr.AreaLimit = areas.SolveAreaLimit;
+        sr.Forecast = areas.SolveForecast;
+        sr.MinLevel = areas.MinLevel;
+        showAdd = s.ShowStockAdd;
+        fr = await storage.GetFilterRecord(fr, Server);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Box == null || Server.IsNullOrEmpty())
+            return;
+        statusSet = await api.GetEquipmentStatusSetAsync();
+        (_, consume, ueDict) = await arm.CalcBoxGap(Box, Server);
+        consume.ForEach(SetUeClass);
+        consumeDict = consume.ToDictionary(c => c.EquipmentId);
+        await arm.CheckExConsume(consume, consumeDict, Server);
+        allEquips = (await arm.GetAllEquipments(Server)).ToDictionary(e => e.EquipmentId);
+    }
+
+    async Task SaveSettings()
+    {
+        var s = api.Settings;
+        var areas = s.GetAreaSetting(Server);
+        areas.SolveNormal = sr.Normal;
+        areas.SolveHard = sr.Hard;
+        areas.SolveAreaLimit = sr.AreaLimit;
+        areas.SolveHardTimes = sr.HardTimes;
+        areas.SolveForecast = sr.Forecast;
+        areas.MinLevel = sr.MinLevel;
+        await api.SaveSettings();
+    }
+
+    string GetTitle(int eid)
+    {
+        return statusSet.TryGetNameAndStatus(eid, Server);
+    }
+
+    void StockChanged(int eid, int v, int? add = null)
+    {
+        if (!consumeDict.TryGetValue(eid, out var se))
+            allEquips.TryGetValue(eid, out se);
+        if (se != null)
+        {
+            if (add.HasValue)
+                v = se.StockNum + add.Value;
+            arm.ApplyEquipStockToConsume(se, consume, se.StockNum, v);
+            se.StockNum = v;
+            changedDatas.Add(se);
+
+            se.StockDelta = null;
+            SetUeClass(se);
+        }
+        //await arm.UpdateStockNum(se, Server);
+    }
+
+    void StockAdd(int eid, int? e)
+    {
+        if (e > 0)
+        {
+            StockChanged(eid, 0, e);
+        }
+    }
+
+    async Task SaveToServer()
+    {
+        await SaveStockChanges();
+        var r = await arm.SaveStockToServer(Server);
+        if (r)
+            nty.Notify(NotificationSeverity.Success, "备份完成");
+        else
+            nty.Notify(NotificationSeverity.Error, "备份失败");
+    }
+
+    void SetUeClass(SimpleEquipmentData ce)
+    {
+        var ueList = ueDict[ce.EquipmentId];
+        if (!ueList.IsNullOrEmpty())
+        {
+            var stock = ce.StockNum;
+            foreach (var ue in ueList)
+            {
+                if (stock >= ue.Consume)
+                {
+                    stock -= ue.Consume;
+                    ue.Class = "green";
+                    continue;
+                }
+                if (ue.Priority > 0)
+                {
+                    ue.Class = "red";
+                    continue;
+                }
+                ue.Class = null;
+            }
+        }
+    }
+
+    async Task Solve()
+    {
+        if (consume == null)
+            return;
+        await SaveStockChanges();
+        var gaps = consume.Where(c => !c.CraftFlg && c.Gap > 0 && c.PromotionLevel >= sr.MinLevel);
+        var gapIds = gaps.Select(g => g.EquipmentId).ToList();
+        if (api.Settings.IgnoreDonation)
+            gaps = gaps.Where(g => !g.EnableDonation);
+        if (gaps.Any())
+        {
+            sr.Server = Server;
+            sr.EquipmentIds = gaps.Select(g => g.EquipmentId).ToArray();
+            sr.Requirements = gaps.Select(g => g.Gap).ToArray();
+            if (!api.Settings.ShowForecast || sr.AreaLimit == 0)
+                sr.Forecast = 0;
+            var srs = await arm.GetSolveResultsAsync(sr);
+            if (srs == null)
+            {
+                nty.Notify(NotificationSeverity.Warning, "计算失败");
+            }
+            else
+            {
+                noDropIds = gapIds.Except(srs.SelectMany(sr => sr.EquipmentIds)).ToList();
+                foreach (var sr in srs)
+                {
+                    sr.UniqueIds = new();
+                    sr.Equipments = sr.EquipmentIds.Select(id => consumeDict[id]).ToList();
+                }
+                if (api.Settings.ShowByproduct)
+                {
+                    var areas = await api.GetAreaInfos(Server);
+                    foreach (var sr in srs)
+                    {
+                        var q = areas.FirstOrDefault(a => a.AreaId == sr.QuestId / 1000)?.Quests.FirstOrDefault(q => q.QuestId == sr.QuestId);
+                        if (q != null)
+                        {
+                            var ids = q.DropItems.Where(d => !d.IsItem).Select(d => d.Id).Except(sr.EquipmentIds).ToArray();
+                            sr.RestEquipments = new List<SimpleEquipmentData>();
+                            foreach (var id in ids)
+                            {
+                                if (!consumeDict.TryGetValue(id, out var se))
+                                    allEquips.TryGetValue(id, out se);
+                                sr.RestEquipments.Add(se);
+                            }
+                        }
+                    }
+                }
+                CalcPriorityAndUnique(srs);
+                solveResultsBak = solveResults = fr.SetOrder(srs).ToList();
+            }
+        }
+    }
+
+    void CalcPriorityAndUnique(List<SolveResult> results)
+    {
+        var pass = !ueDict.WithPriority;
+        var dict = new Dictionary<int, List<SolveResult>>();
+        foreach (var sr in results)
+        {
+            for (int i = 0; i < sr.Equipments.Count; i++)
+            {
+                var se = sr.Equipments[i];
+                dict.AddList(se.EquipmentId, sr);
+                if (pass)
+                    continue;
+                var ueList = ueDict[se.EquipmentId];
+                if (ueList.IsNullOrEmpty())
+                    continue;
+                var exp = sr.Expected[i];
+                var stock = se.StockNum;
+                var cnum = consumeDict[se.EquipmentId].ConsumeNum;
+                var all = Math.Min(cnum, exp + stock);
+                var p = 0;
+                foreach (var ue in ueList)
+                {
+                    var num = ue.Consume;
+                    var priority = ue.Priority;
+                    if (stock - num >= 0)
+                    {
+                        stock -= num;
+                        all -= num;
+                        continue;
+                    }
+                    if (all - num >= 0)
+                    {
+                        p += (num - stock) * priority;
+                        stock = 0;
+                        all -= num;
+                        continue;
+                    }
+                    if (all < num)
+                    {
+                        p += (all - stock) * priority;
+                        break;
+                    }
+                }
+                sr.Priority += p;
+                if (api.Settings.HighlightPriority && p > 0)
+                    sr.UniqueIds.Add(se.EquipmentId);
+            }
+        }
+        if (api.Settings.HighlightUnique)
+        {
+            foreach (var (k, v) in dict)
+            {
+                if (v.Count == 1)
+                {
+                    v[0].UniqueIds.Add(k);
+                }
+            }
+        }
+    }
+
+    async Task OrderChanged()
+    {
+        fr.OnOrderKeyChanged(orderKey);
+        if (!solveResults.IsNullOrEmpty())
+            solveResults = fr.SetOrder(solveResults).ToList();
+        await storage.SaveFilterRecord(fr, Server);
+    }
+
+    void Filter()
+    {
+        if (searchKey.IsNullOrEmpty())
+        {
+            solveResults = fr.SetOrder(solveResultsBak).ToList();
+        }
+        else
+        {
+            var srs = solveResultsBak
+                .Where(r => r.Equipments.Any(e => e.EquipmentName.Contains(searchKey))
+                || (r.RestEquipments != null && r.RestEquipments.Any(e => e.EquipmentName.Contains(searchKey))));
+            solveResults = fr.SetOrder(srs).ToList();
+        }
+    }
+
+    void ShowDrop(int id)
+    {
+        if (allEquips.TryGetValue(id, out var eq))
+        {
+            if (eq.CraftFlg)
+            {
+                if (allEquips.TryGetValue(id + 10000, out eq))
+                    id = eq.EquipmentId;
+                else if (allEquips.TryGetValue(id + 20000, out eq))
+                    id = eq.EquipmentId;
+                else
+                    return;
+            }
+            dialog.Open<ItemDrop>(eq.EquipmentName, new Dictionary<string, object>
+            {
+                ["ItemId"] = id
+            }, new DialogOptions { Width = "700px" });
+        }
+    }
+
+    void MouseOver(ElementReference ele, int eid)
+    {
+        iconFlag = true;
+        icons = ueDict[eid];
+        ts.ShowEquipmentStatus(ele, eid, Server);
+    }
+
+    async Task MouseOut()
+    {
+        ts.Close();
+        iconFlag = false;
+        await Task.Delay(500);
+        if (!iconFlag)
+            icons = null;
+    }
+
+    async Task Export()
+    {
+        await api.ExportSolveResults(solveResults);
+    }
+
+    async Task GetFromServer()
+    {
+        if (await dialog.OpenConfirmAsync("确认", "使用服务端备份覆盖本地库存？"))
+        {
+            var r = await arm.GetStockFromServer(Server);
+            if (r)
+            {
+                await OnParametersSetAsync();
+                nty.Notify(NotificationSeverity.Success, "还原成功");
+            }
+            else
+                nty.Notify(NotificationSeverity.Success, "还原失败");
+        }
+    }
+
+    async ValueTask SaveStockChanges()
+    {
+        if (!changedDatas.IsNullOrEmpty())
+        {
+            await arm.UpdateStockNums(changedDatas, Server);
+            Console.WriteLine("UpdateStocks: " + changedDatas.Count);
+            changedDatas.Clear();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await SaveStockChanges();
+        await SaveSettings();
+    }
+}

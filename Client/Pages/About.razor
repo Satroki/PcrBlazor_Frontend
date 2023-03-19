@@ -1,0 +1,80 @@
+﻿@page "/about"
+@inject ApiService api
+
+<RadzenCard>
+    <div class="version-div d-flex">
+        <div class="f-1">
+            <RadzenFieldset Text="更新履历">
+                <div class="d-flex dashed-b-5">
+                    <h3 class="f-1">本地版本 @Constants.ClientVersion <span>若版本不匹配请更新</span></h3>
+                </div>
+                @if (logs == null)
+                {
+                    <p>暂无</p>
+                }
+                else
+                {
+                    @foreach (var log in logs)
+                    {
+                        <div class="logs-div">
+                            <p class="logs-v">版本：@log.Version <span hidden="@(!showId)"> Id: @log.Id</span></p>
+                            <p class="logs-d">时间：@log.DateTime.LocalDateTime.ToString("yyyy-MM-dd HH:mm")</p>
+                            <p class="logs-l">@log.Log</p>
+                        </div>
+                    }
+                }
+            </RadzenFieldset>
+            <RadzenFieldset Text="相关链接" Style="margin-top:10px">
+                <ul>
+                    <li><a target="_blank" href="https://redive.estertion.win">干炸里脊资源站</a></li>
+                    <li><a target="_blank" href="https://www.caimogu.cc/gzlj.html">公会战作业网</a></li>
+                    <li><a target="_blank" href="https://pcredivewiki.tw/">蘭德索爾圖書館</a></li>
+                    <li><a target="_blank" href="https://space.bilibili.com/353840826/">国服官方号</a></li>
+                    <li><a target="_blank" href="https://wiki.biligame.com/pcr/">公主连结WIKI</a></li>
+                    <li><a target="_blank" href="https://github.com/superk589/PrincessGuide">初音笔记</a></li>
+                    <li><a target="_blank" href="https://github.com/MalitsPlus/ShizuruNotes">静流笔记</a></li>
+                    <li><a target="_blank" href="https://www.pcrdfans.com/">竞技场数据分析</a></li>
+                    <li><a target="_blank" href="https://kyouka.kengxxiao.com/rank/clan/">公会战排名</a></li>
+                    <li><a target="_blank" href="https://bbs.nga.cn/thread.php?fid=-10308342">公主连结NGA</a></li>
+                </ul>
+            </RadzenFieldset>
+            <RadzenFieldset Text="相关技术" Style="margin-top:10px">
+                <ul>
+                    <li>后端：<a target="_blank" href="https://dotnet.microsoft.com/apps/aspnet">ASP.NET</a></li>
+                    <li>前端：<a target="_blank" href="https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor">Blazor</a> + <a target="_blank" href="https://blazor.radzen.com/">Radzen</a></li>
+                </ul>
+            </RadzenFieldset>
+        </div>
+        <div class="d-flex flex-column" style="margin-left:10px">
+            <RadzenFieldset Text="反馈">
+                <div class="d-flex flex-column">
+                    <div class="d-flex align-items-center">
+                        <p>意见建议，Bug反馈：</p>
+                        <a target="_blank" href="https://bbs.nga.cn/read.php?tid=22432464" style="margin-right:10px">NGA</a>
+                        <a target="_blank" href="https://space.bilibili.com/99466" style="margin-right:10px">B站</a>
+                        <a target="_blank" href="https://qm.qq.com/cgi-bin/qm/qr?k=zHAdBlW6csXL0Gf1PnEL0YEhv4824gub&jump_from=webapi">交流群</a>
+                    </div>
+                    <a class="d-block" href="mailto:Satroki@outlook.com">Satroki@outlook.com</a>
+                    <p style="color: #88989b; font-size: 0.875rem;margin:10px 0 5px 0">欢迎打赏支持，用于补贴服务器流量开支</p>
+                    <a target="_blank" href="https://afdian.net/a/satroki" style="margin-bottom:5px">爱发电</a>
+                    <div style="height:300px;overflow:hidden">
+                        <img style="width:300px;margin-top:-96px" src="https://fcdn.satroki.tech/alipay.jpg" />
+                    </div>
+                    <div style="height:300px;overflow:hidden">
+                        <img style="width:300px" src="https://fcdn.satroki.tech/wx.jpg" />
+                    </div>
+                </div>
+            </RadzenFieldset>
+        </div>
+    </div>
+</RadzenCard>
+
+@code {
+    List<UpdateLog> logs;
+    bool showId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        logs = await api.GetUpdateLogsAsync(5);
+    }
+}

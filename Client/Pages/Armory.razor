@@ -1,0 +1,256 @@
+﻿@page "/armory"
+@inject ArmoryService arm
+@inject ApiService api
+@inject NotificationService nty
+@inject DialogService dialog
+@inject NavigationManager nav
+@inject ILocalStorageService storage
+@inject TooltipHelperService ts
+
+<RadzenCard Style="position:relative">
+    <div class="row sticky-header">
+        <div class="d-flex align-items-center justify-content-center">
+            @if (allowEdit)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="导入" title="导入库存数据" Click="Import"
+                          Style="margin-right:10px;padding:0 10px" />
+                <RadzenButton ButtonStyle="ButtonStyle.Info" Text="导出" title="导出库存数据" Click="Export"
+                          Style="margin-right:10px;padding:0 10px" />
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="装备识别" title="识别装备库存截图" Click="Upload"
+                          Style="margin-right:10px;padding:0 10px" />
+            }
+            <RadzenButton ButtonStyle="ButtonStyle.Info" Text="需求估算" title="计算未来装备需求量" Click="CalcDemand"
+                          Style="margin-right:10px;padding:0 10px" />
+            <RadzenTextBox Placeholder="搜索..." @bind-Value="@fr.Key" Change="Filter"
+                           Style="width:150px;" />
+            <RadzenIcon Icon="filter_alt" @onclick="ShowFilter" Style="cursor:pointer;align-self:center;margin-left:5px" title="自定义筛选" />
+        </div>
+        <div class="f-1 d-flex align-items-center justify-content-end" style="margin: 0">
+            @if (Server == "cn")
+            {
+                <div class="d-f-c">
+                    <RadzenCheckBox TValue="bool"
+                                Change="Filter" @bind-Value="@fr.ShowAll" />
+                    <RadzenLabel Text="含日服" Style="margin:0 10px 0 5px" />
+                </div>
+            }
+            @if (allowEdit && fr.ShowStockFilter)
+            {
+                <RadzenDropDown AllowClear="false" AllowFiltering="false" Multiple="false" Placeholder="库存..." TextProperty="Key" ValueProperty="Value" TValue="int"
+                            Change="Filter" Data="@fr.StockDict" @bind-Value="@fr.StockFilter"
+                            Style="width:120px;margin-right:10px" />
+            }
+            @if (fr.ShowTypeFilter)
+            {
+                <RadzenDropDown AllowClear="false" AllowFiltering="false" Multiple="false" Placeholder="类型..." TextProperty="Key" ValueProperty="Value" TValue="int"
+                            Change="Filter" Data="@fr.TypeDict" @bind-Value="@fr.TypeFilter"
+                            Style="width:120px;margin-right:10px" />
+            }
+            @if (fr.ShowLevelFilter)
+            {
+                <p style="margin:0 5px 0 0px" title="@Constants.EquipRankDesp">装等</p>
+                <RadzenNumeric Min="1" Max="@Constants.EquipMaxRank" TValue="int" @bind-Value="fr.MinLevel" Style="width:55px" title="@Constants.EquipRankDesp"
+                           Change="Filter" />
+                <p style="margin:0 5px">-</p>
+                <RadzenNumeric TValue="int?" @bind-Value="fr.MaxLevel" Change="Filter" Style="width:55px" Placeholder="99" />
+            }
+
+            @if (allowEdit)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Info" Text="备份" title="备份库存信息到服务器" Click="SaveToServer"
+                          Style="margin-left: 10px; padding: 0 10px" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="还原" title="用服务器备份信息覆盖本地" Click="GetFromServer"
+                          Style="margin-left: 10px; padding: 0 10px " />
+                <RadzenButton ButtonStyle="ButtonStyle.Light" Text="清空" Click="Clear"
+                          Style="margin-left: 10px; padding: 0 10px" />
+            }
+        </div>
+    </div>
+    <div class="row" style="margin:0 -20px">
+        @if (datas != null)
+        {
+            foreach (var se in datas)
+            {
+                <div class="equip-div flex-column d-flex">
+                    <RadzenImage Path="@se.EquipmentId.GetEquipIcon()" Style="cursor:pointer" @onclick="()=>ShowInfo(se.EquipmentId)"
+                         MouseEnter="e=>ts.ShowEquipmentStatus(e,se.EquipmentId,Server)" MouseLeave="ts.Close" />
+                    <p style="white-space:pre-wrap;flex:1 0 auto">@se.EquipmentName</p>
+                    @if (allowEdit)
+                    {
+                        if (!se.CraftFlg && api.Settings.EnableExtraStock && se.PromotionLevel < 99)
+                        {
+                            @if (se.ExtraStock.HasValue)
+                            {
+                                <div class="d-flex flex-row align-items-center" style="margin-top: 5px">
+                                    <i class="rzi ex-icon ex-icon-remove" @onclick="(async _ => await ExStockChanged(se,null))">remove</i>
+                                    <RadzenNumeric Min="0" Value="se.ExtraStock" TValue="int?"
+                               Change="@(async v =>await ExStockChanged(se,v))"
+                               Style="flex:1" />
+                                </div>
+                            }
+                            <div class="d-flex flex-row align-items-center" style="margin-top: 5px">
+                                <NumInput Min="0" Value="se.StockNum"
+                          Change="@(async v =>await StockChanged(se,v))"
+                          Style="flex:1" />
+                                <i class="rzi ex-icon" @onclick="(async _ => await ExStockChanged(se,0))"
+                   hidden="@se.ExtraStock.HasValue">add</i>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-row">
+                                <NumInput Min="0" Value="se.StockNum"
+                          Change="@(async v =>await StockChanged(se,v))"
+                          Style="width:96px;margin-top:5px" />
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            <ProgressRing />
+        }
+    </div>
+</RadzenCard>
+
+<style>
+    .ex-icon {
+        font-size: 24px;
+        cursor: pointer;
+        color: dodgerblue;
+    }
+
+    .ex-icon-remove {
+        color: red;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    IEnumerable<SimpleEquipmentData> oridatas;
+    IEnumerable<SimpleEquipmentData> datas;
+    EquipmentStatusSet statusSet;
+    EquipFilterRecord fr = new EquipFilterRecord();
+    bool allowEdit = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await api.InitSettings();
+        fr = await storage.GetFilterRecord<EquipFilterRecord>(fr, Server);
+        allowEdit = (await authenticationStateTask).User.Identity.IsAuthenticated;
+        if (allowEdit)
+        {
+            oridatas = await arm.GetAllEquipments(Server);
+        }
+        else
+        {
+            var equips = await api.GetEquipmentDatasAsync(Server);
+            oridatas = equips.Select(e => new SimpleEquipmentData(e)).ToList();
+        }
+        //oridatas = oridatas.Where(d => d.IsVisible).ToList();
+        statusSet = await api.GetEquipmentStatusSetAsync();
+        await Filter();
+    }
+
+    async Task Filter()
+    {
+        datas = fr.SetFiltersAndOrder(oridatas, allowEdit);
+        await storage.SaveFilterRecord(fr, Server);
+    }
+
+    async Task StockChanged(SimpleEquipmentData se, int num)
+    {
+        se.StockNum = num;
+        await arm.UpdateStockNum(se, Server);
+    }
+
+    async Task ExStockChanged(SimpleEquipmentData se, int? num)
+    {
+        se.ExtraStock = num;
+        await arm.UpdateExStockNum(se, Server);
+    }
+
+    async Task Clear()
+    {
+        if (await dialog.OpenConfirmAsync("确认", "清空所有库存？"))
+        {
+            await arm.ClearStock(Server);
+            foreach (var d in oridatas)
+            {
+                d.StockNum = 0;
+                d.ExtraStock = null;
+            }
+        }
+    }
+
+    async Task SaveToServer()
+    {
+        var r = await arm.SaveStockToServer(Server);
+        if (r)
+            nty.Notify(NotificationSeverity.Success, "备份完成");
+        else
+            nty.Notify(NotificationSeverity.Success, "备份失败");
+    }
+
+    async Task GetFromServer()
+    {
+        if (await dialog.OpenConfirmAsync("确认", "使用服务端备份覆盖本地库存？"))
+        {
+            var r = await arm.GetStockFromServer(Server);
+            if (r)
+            {
+                arm.UpdateSimpleEquipmentsNum(oridatas, Server);
+                nty.Notify(NotificationSeverity.Success, "还原成功");
+            }
+            else
+                nty.Notify(NotificationSeverity.Success, "还原失败");
+        }
+    }
+
+    async Task Import()
+    {
+        var b = await dialog.OpenAsync<ImportStock>("导入数据");
+        if (b is bool bb && bb)
+        {
+            arm.UpdateSimpleEquipmentsNum(oridatas, Server);
+        }
+    }
+
+    async Task Export()
+    {
+        await arm.ExportStock(Server);
+    }
+
+    async Task Upload()
+    {
+        var b = await dialog.OpenAsync<Recognize>("装备识别", options: new DialogOptions { Width = "650px" });
+        if (b is bool bb && bb)
+        {
+            arm.UpdateSimpleEquipmentsNum(oridatas, Server);
+        }
+    }
+
+    void ShowInfo(int id)
+    {
+        nav.NavigateTo($"/equip/{id}");
+    }
+
+    void CalcDemand()
+    {
+        dialog.Open<EquipmentDemand>("需求估算", new Dictionary<string, object> { ["MinLevel"] = fr.MinLevel });
+    }
+
+    async Task ShowFilter()
+    {
+        var r = await dialog.OpenAsync<ArmoryFilter>("自定义筛选", new() { ["FilterRecord"] = fr });
+        if (r is bool b && b)
+        {
+            await Filter();
+        }
+    }
+}

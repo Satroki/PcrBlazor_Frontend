@@ -1,0 +1,211 @@
+﻿@page "/setting"
+@inject ApiService api
+@inject TooltipHelperService ts
+
+<RadzenCard>
+    <RadzenFieldset Text="Box设置">
+        <div class="d-flex align-items-center">
+            <RadzenCheckBox @bind-Value="s.ShowEquipsStock" />
+            <RadzenLabel Text="Box中显示库存" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="s.AutoConsume" />
+            <RadzenLabel Text="自动扣除库存" Style="margin:0 10px 0 5px" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.AllowAllUnique" />
+            <RadzenLabel Text="允许所有角色设置专武" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="s.UseJpUniqueRank" />
+            <RadzenLabel Text="使用日服专武上限" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="s.UseJpRarity6" />
+            <RadzenLabel Text="启用日服6星角色" Style="margin:0 10px 0 5px" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.ShowSkillValueNo" />
+            <RadzenLabel Text="显示角色技能参数序号" Style="margin:0 10px 0 5px" />
+        </div>
+    </RadzenFieldset>
+    <RadzenFieldset Text="导出设置（XLSX仅导出收藏时生效）">
+        <div>
+            <RadzenRadioButtonList @bind-Value="s.ExportType" TValue="string" Orientation="Orientation.Horizontal">
+                <Items>
+                    <RadzenRadioButtonListItem Text="纵向（CSV UTF-8）" Value="@("v-c")" />
+                    <RadzenRadioButtonListItem Text="纵向（XLSX）" Value="@("v-x")" />
+                    <RadzenRadioButtonListItem Text="横向（XLSX）" Value="@("h-x")" />
+                </Items>
+            </RadzenRadioButtonList>
+        </div>
+        <div style="margin-top:10px">
+            <RadzenCheckBoxList @bind-Value="fields" TValue="string" Orientation="Orientation.Horizontal" Change="FieldsChanged">
+                <Items>
+                    <RadzenCheckBoxListItem Text="等级" Value="@("Level")" />
+                    <RadzenCheckBoxListItem Text="星级" Value="@("Rarity")" />
+                    <RadzenCheckBoxListItem Text="Rank" Value="@("Promotion")" />
+                    <RadzenCheckBoxListItem Text="好感度" Value="@("LoveLevel")" />
+                    <RadzenCheckBoxListItem Text="专武" Value="@("UniqueEquipRank")" />
+                </Items>
+            </RadzenCheckBoxList>
+        </div>
+    </RadzenFieldset>
+    <RadzenFieldset Text="规划设置">
+        <div>
+            <RadzenLabel Text="普通倍率" Style="margin:0 5px 0 0" />
+            <RadzenNumeric Min="0" Max="5" TValue="int" @bind-Value="areas.SolveNormal" Style="width:60px" />
+            <RadzenLabel Text="困难倍率" Style="margin:0 5px 0 10px" />
+            <RadzenNumeric Min="0" Max="5" TValue="int" @bind-Value="areas.SolveHard" Style="width:60px" />
+            <RadzenLabel Text="困难次数" Style="margin:0 5px 0 10px" MouseEnter="@(e=>ts.ShowString(e,"计算规划时每张困难图的刷取次数上限"))" MouseLeave="ts.Close" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="areas.SolveHardTimes" Style="width:60px" />
+            <RadzenLabel Text="地图上限" Style="margin:0 5px 0 10px" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="areas.SolveAreaLimit" Style="width:60px" />
+            <RadzenLabel Text="预测上限" Style="margin:0 5px 0 10px" MouseEnter="@(e=>ts.ShowString(e,"未来地图上限：规划时减扣未来地图掉落期望"))" MouseLeave="ts.Close" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="areas.SolveForecast" Style="width:60px" />
+            <RadzenLabel Text="启用预测" Style="margin:0 5px 0 10px" />
+            <RadzenCheckBox @bind-Value="areas.ShowForecast" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.IgnoreDonation" />
+            <RadzenLabel Text="忽略可捐赠装备" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="s.ShowByproduct" />
+            <RadzenLabel Text="显示副产物" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="s.FilterByproduct" />
+            <RadzenLabel Text="副产物适用装等过滤" Style="margin:0 10px 0 5px" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.HighlightUnique" />
+            <RadzenLabel Text="高亮掉落位置唯一装备" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="s.HighlightPriority" />
+            <RadzenLabel Text="高亮优先装备" Style="margin:0 10px 0 5px" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.ShowStockAdd" />
+            <RadzenLabel Text="规划结果中显示加法框" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="s.EnableQuestEfficiency" />
+            <RadzenLabel Text="掉落查询显示地图效率" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"效率按装备库需求预测结果计算"))" MouseLeave="ts.Close" />
+            <RadzenCheckBox @bind-Value="s.IncludeExtraDrops" />
+            <RadzenLabel Text="规划包含额外掉落（仅本地计算生效）" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"计算37图之后地图的额外掉落，掉率按平均计算"))" MouseLeave="ts.Close" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.EnableExtraStock" />
+            <RadzenLabel Text="启用装备囤积" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"可在装备库中设置额外需求量，并参与规划计算"))" MouseLeave="ts.Close" />
+            <RadzenCheckBox @bind-Value="s.RemoteSolve" />
+            <RadzenLabel Text="服务端计算" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"默认本地计算刷图规划，如计算不正常可切换至服务端计算"))" MouseLeave="ts.Close" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.UseJpCraft" />
+            <RadzenLabel Text="使用日服合成表（保存并刷新后生效）" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"所有装备合成相关计算都将使用日服（减负后）合成表"))" MouseLeave="ts.Close" />
+        </div>
+                <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.UseCnCraft" />
+            <RadzenLabel Text="使用国服合成表（保存并刷新后生效）" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"所有装备合成相关计算都将使用国服合成表"))" MouseLeave="ts.Close" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-top:10px">
+            <RadzenCheckBox @bind-Value="s.UseOldCraft" />
+            <RadzenLabel Text="使用国服减负前合成表（保存并刷新后生效）" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"国服所有装备合成相关计算都将使用减负前合成表"))" MouseLeave="ts.Close" />
+        </div>
+    </RadzenFieldset>
+    <RadzenFieldset Text="属性计算">
+        <div>
+            <RadzenRadioButtonList @bind-Value="s.AutoStatusCalc" TValue="bool" Orientation="Orientation.Horizontal">
+                <Items>
+                    <RadzenRadioButtonListItem Text="自动" Value="@true" />
+                    <RadzenRadioButtonListItem Text="禁用" Value="@false" />
+                </Items>
+            </RadzenRadioButtonList>
+            <RadzenRadioButtonList @bind-Value="s.ShowAllStatus" TValue="bool" Orientation="Orientation.Horizontal" Visible="@s.AutoStatusCalc"
+                                   Style="margin-top:10px">
+                <Items>
+                    <RadzenRadioButtonListItem Text="显示全部属性" Value="@true" />
+                    <RadzenRadioButtonListItem Text="显示属性差值" Value="@false" />
+                </Items>
+            </RadzenRadioButtonList>
+        </div>
+    </RadzenFieldset>
+    <div class="d-flex">
+        <RadzenFieldset Text="显示更高Rank（简中服）" Style="flex:50%">
+            <div>
+                <RadzenRadioButtonList @bind-Value="crs.AllowAllRank" TValue="bool" Orientation="Orientation.Horizontal">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="启用" Value="@true" />
+                        <RadzenRadioButtonListItem Text="禁用" Value="@false" />
+                    </Items>
+                </RadzenRadioButtonList>
+                <RadzenRadioButtonList @bind-Value="crs.ApplyToAll" TValue="bool" Orientation="Orientation.Horizontal" Visible="@crs.AllowAllRank"
+                                       Style="margin-top:10px">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="全局" Value="@true" />
+                        <RadzenRadioButtonListItem Text="独立" Value="@false" />
+                    </Items>
+                </RadzenRadioButtonList>
+                <div class="align-items-center" style="margin-top:10px;display:flex" hidden="@(!crs.AllowAllRank || !crs.ApplyToAll)">
+                    <RadzenLabel Text="最高Rank" Style="margin:0 5px 0 0" />
+                    <RadzenNumeric TValue="int" @bind-Value="crs.MaxRank" Style="width:60px" />
+                    <RadzenLabel Text="装备件数" Style="margin:0 5px 0 10px" />
+                    <RadzenNumeric Min="1" Max="6" TValue="int" @bind-Value="crs.Slots" Style="width:60px" />
+                </div>
+            </div>
+        </RadzenFieldset>
+        <RadzenFieldset Text="限制最高Rank（日语服）" Style="flex:50%">
+            <div>
+                <RadzenRadioButtonList @bind-Value="jrs.AllowAllRank" TValue="bool" Orientation="Orientation.Horizontal">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="启用" Value="@true" />
+                        <RadzenRadioButtonListItem Text="禁用" Value="@false" />
+                    </Items>
+                </RadzenRadioButtonList>
+                <RadzenRadioButtonList @bind-Value="jrs.ApplyToAll" TValue="bool" Orientation="Orientation.Horizontal" Visible="@jrs.AllowAllRank"
+                                       Style="margin-top:10px">
+                    <Items>
+                        <RadzenRadioButtonListItem Text="全局" Value="@true" />
+                        <RadzenRadioButtonListItem Text="独立" Value="@false" />
+                    </Items>
+                </RadzenRadioButtonList>
+                <div class="align-items-center" style="margin-top:10px;display:flex" hidden="@(!jrs.AllowAllRank || !jrs.ApplyToAll)">
+                    <RadzenLabel Text="最高Rank" Style="margin:0 5px 0 0" />
+                    <RadzenNumeric Min="9" TValue="int" @bind-Value="jrs.MaxRank" Style="width:60px" />
+                    <RadzenLabel Text="装备件数" Style="margin:0 5px 0 10px" />
+                    <RadzenNumeric Min="1" Max="6" TValue="int" @bind-Value="jrs.Slots" Style="width:60px" />
+                </div>
+            </div>
+        </RadzenFieldset>
+    </div>
+    <RadzenButton Text="保存" ButtonStyle="ButtonStyle.Secondary" Click="Save" Style="margin-top:10px" />
+</RadzenCard>
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    ClientSettings s = new ClientSettings();
+    IEnumerable<string> fields;
+    ClientSettings bak;
+    IRankSlotSetting crs = new RankSlotSetting();
+    IRankSlotSetting jrs = new RankSlotSetting();
+    IAreaSetting areas = new AreaSetting();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await api.InitSettings();
+        s = api.Settings;
+        fields = s.ExportFields;
+        crs = s;
+        jrs = s.RankSlotSettingJp;
+        bak = s.JsonCopy();
+        areas = s.GetAreaSetting(Server);
+    }
+
+    void FieldsChanged()
+    {
+        s.ExportFields = fields?.ToList();
+    }
+
+    async Task Save()
+    {
+        await api.SaveSettings();
+        var rs = s.GetRankSetting(Server);
+        var rsBak = bak.GetRankSetting(Server);
+        if (rs.AllowAllRank != rsBak.AllowAllRank || rs.ApplyToAll != rsBak.ApplyToAll)
+        {
+            await api.GetUserBox(Server, true);
+        }
+        else if (rs.AllowAllRank && rs.ApplyToAll && (rs.MaxRank != rsBak.MaxRank || rs.Slots != rsBak.Slots))
+        {
+            await api.GetUserBox(Server, true);
+        }
+    }
+}

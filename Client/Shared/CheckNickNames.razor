@@ -1,0 +1,50 @@
+﻿@inject ApiService api
+@inject DialogService ds
+
+<div>
+    @foreach (var un in NickNames)
+    {
+        <div class="d-f-c border-bottom">
+            <div>
+                <img src="@((un.UnitId+30).GetUnitIcon())" class="unn-img" />
+            </div>
+            <div class="f-1">
+                <RadzenLabel Text="@un.ToString()" Style="display:block" />
+                <RadzenTextBox @bind-Value="un.TempNames" Style="width:100%"/>
+            </div>
+            <div>
+                <RadzenButton Text="保存" Click="async _=>await Save(un,false)" ButtonStyle="ButtonStyle.Primary"
+                          Style="margin:0 10px" />
+                <RadzenButton Text="清空" Click="async _=>await Save(un,true)" ButtonStyle="ButtonStyle.Danger" />
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .unn-img {
+        width: 64px;
+        height: 64px;
+        margin: 0 10px 5px 0
+    }
+</style>
+
+@code {
+    [Parameter]
+    public List<UnitNickNames> NickNames { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        NickNames.ForEach(n => n.TempNames = n.ToString(true));
+    }
+
+    private async Task Save(UnitNickNames un, bool clear)
+    {
+        var newUn = clear ? await api.AddNickNames(un.UnitId, null, true, true)
+        : await api.AddNickNames(un.UnitId, un.TempNames, true, true);
+        un.NickNames = newUn.NickNames;
+        un.Requests = newUn.Requests;
+        un.TempNames = string.Empty;
+    }
+}

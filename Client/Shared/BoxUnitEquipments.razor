@@ -1,0 +1,138 @@
+﻿@inject ApiService api
+@inject ArmoryService arm
+@inject TooltipHelperService ts
+
+@if (Line.UnitPromotion == null)
+{
+    <div class="unit-equip">
+        @for (int i = 0; i < 6; i++)
+        {
+            <div class="unit-equip-img" no-equip>
+                <img src="@ds.GetEquipIcon()" />
+            </div>
+        }
+    </div>
+}
+else
+{
+    var p = Line.UnitPromotion;
+    var ps = p.EquipSlots;
+    <div class="unit-equip">
+        @for (int i = 1; i <= 6; i++)
+        {
+            var ii = i;
+            var noe = GetNoEquip(ii);
+            var eid = ps[ii - 1];
+
+
+            <div class="unit-equip-img" @onclick="@(_=>Click(ii))">
+                @if (MultiMode)
+                {
+                    <RadzenImage Path="@eid.GetEquipIcon()" no-equip="@noe" />
+                }
+                else
+                {
+                    <RadzenImage Path="@eid.GetEquipIcon()" no-equip="@noe"
+                                 MouseEnter="arg=>ts.ShowEquipmentStatus(arg,eid,server)" MouseLeave="@ts.Close" />
+                    @if (calcStock && noe && eid != ds)
+                    {
+                        var (str, over) = GetStock(eid);
+                        <p overflow="@over" hidden="@(str==null)">@str</p>
+                    }
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public UserBoxLine Line { get; set; }
+
+    [Parameter]
+    public bool AllowEdit { get; set; }
+
+    [Parameter]
+    public bool ShowStock { get; set; }
+
+    [Parameter]
+    public bool MultiMode { get; set; }
+
+    bool calcStock => AllowEdit || ShowStock;
+
+    int ds = UnitPromotion.DefaultSlot;
+
+    Dictionary<int, int> stockDict;
+    List<EquipmentCraft> crafts;
+    string server;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!MultiMode && Line != null && calcStock && stockDict == null)
+        {
+            crafts = await api.GetEquipmentCraftsAsync(Line.Server);
+            stockDict = await arm.InitUserStockDict(Line.Server);
+        }
+        server = Line?.Server;
+    }
+
+    string GetEquipmentStatus(int id)
+    {
+        return api.EquipmentStatusSet.TryGetNameAndStatus(id, Line.Server);
+    }
+
+    void Click(int slot)
+    {
+        if (AllowEdit)
+        {
+            var p = Line.UnitPromotion;
+            switch (slot)
+            {
+                case 1: Line.Slot1 = CheckSlot(p.EquipSlot_1, Line.Slot1); break;
+                case 2: Line.Slot2 = CheckSlot(p.EquipSlot_2, Line.Slot2); break;
+                case 3: Line.Slot3 = CheckSlot(p.EquipSlot_3, Line.Slot3); break;
+                case 4: Line.Slot4 = CheckSlot(p.EquipSlot_4, Line.Slot4); break;
+                case 5: Line.Slot5 = CheckSlot(p.EquipSlot_5, Line.Slot5); break;
+                case 6: Line.Slot6 = CheckSlot(p.EquipSlot_6, Line.Slot6); break;
+            }
+        }
+    }
+
+    bool GetNoEquip(int slot)
+    {
+        var p = Line.UnitPromotion;
+        switch (slot)
+        {
+            case 1: return !Line.Slot1 || p.EquipSlot_1 == ds;
+            case 2: return !Line.Slot2 || p.EquipSlot_2 == ds;
+            case 3: return !Line.Slot3 || p.EquipSlot_3 == ds;
+            case 4: return !Line.Slot4 || p.EquipSlot_4 == ds;
+            case 5: return !Line.Slot5 || p.EquipSlot_5 == ds;
+            case 6: return !Line.Slot6 || p.EquipSlot_6 == ds;
+        }
+        return true;
+    }
+
+    bool CheckSlot(int equipId, bool slot)
+    {
+        if (equipId == ds)
+            return false;
+        return !slot;
+    }
+
+    (string, bool) GetStock(int i)
+    {
+        if (stockDict != null)
+        {
+            if (stockDict.TryGetValue(i, out var s) && s > 0)
+                return ($"{s}/1", true);
+            var craft = crafts.FirstOrDefault(c => c.EquipmentId == i);
+            if (craft != null && craft.ConditionEquipmentId_1 > 0)
+            {
+                stockDict.TryGetValue(craft.ConditionEquipmentId_1, out var ss);
+                return ($"{ss}/{craft.ConsumeNum_1}", ss >= craft.ConsumeNum_1);
+            }
+        }
+        return (null, false);
+    }
+}

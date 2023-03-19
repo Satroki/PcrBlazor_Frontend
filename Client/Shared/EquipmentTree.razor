@@ -1,0 +1,58 @@
+﻿@if (Equipment != null)
+{
+    <div style="@Style" class="@($"equip-tree-{Level}")">
+        <div title="@Equipment.EquipmentName" class="d-flex align-items-center @(Level>0 ?"equip-tree-img" :null)">
+            <a href="/equip/@Equipment.EquipmentId">
+                <img src="@Equipment.EquipmentId.GetEquipIcon()" style="width:64px;height:64px;" />
+            </a>
+            @if (CraftMode)
+            {
+                <p style="margin-left:15px;font-size:1.8rem;">×@Equipment.ConsumeNum</p>
+            }
+            else
+            {
+                <p style="margin-left:5px;font-size:1rem;color:#88989b">+@Equipment.ConsumeNum</p>
+            }
+        </div>
+        @if (CraftMode)
+        {
+            if (Equipment.ConsumedEquips != null)
+            {
+                foreach (var item in Equipment.ConsumedEquips)
+                {
+                    <EquipmentTree CraftMode="CraftMode" Equipment="item" Level="childLevel" />
+                }
+            }
+        }
+        else
+        {
+            if (Equipment.ConsumeByEquips != null)
+            {
+                foreach (var item in Equipment.ConsumeByEquips)
+                {
+                    <EquipmentTree CraftMode="CraftMode" Equipment="item" Level="childLevel" />
+                }
+            }
+        }
+    </div>
+}
+
+
+@code {
+    [Parameter]
+    public SimpleEquipmentData Equipment { get; set; }
+
+    [Parameter]
+    public bool CraftMode { get; set; }
+    public string Style { get; set; }
+    [Parameter]
+    public int Level { get; set; }
+    int childLevel;
+
+    protected override void OnParametersSet()
+    {
+        childLevel = Level + 1;
+        if (Level > 0)
+            Style = "padding-left: 64px;";
+    }
+}

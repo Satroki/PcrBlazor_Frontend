@@ -1,0 +1,188 @@
+﻿@inject DialogService dialog
+@inject ApiService api
+@inject ILocalStorageService storage
+
+<RadzenTextArea @bind-Value="lines" Style="height:400px;width:100%" Placeholder="@GetPlacheHolder()">
+
+</RadzenTextArea>
+
+<div class="row justify-content-center">
+    <p class="col-md-12" style="margin:5px 0 0 0;color:red">@info</p>
+    <div class="d-flex col" style="margin-top: 10px;">
+        <div class="d-flex align-items-center ">
+            <RadzenLabel Text="队名: " Style="margin-right:5px" />
+            <RadzenCheckBox TValue="bool" @bind-Value="withName" Style="margin-right:10px" />
+            <RadzenLabel Text="Auto: " Style="margin-right:5px" />
+            <RadzenCheckBox TValue="bool" @bind-Value="isAuto" />
+        </div>
+        <div class="d-flex align-items-center justify-content-end f-1">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="导入" Click="Submit" Style="margin-left:10px" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    string lines;
+    bool isAuto = true;
+    bool withName = true;
+    bool flag = false;
+    Dictionary<int, UnitNickNames> nickNames;
+    Dictionary<string, double> scoreDict = new();
+    char[] sps = new[] { ' ', '\t' };
+    string[] ignoreKeys = new[] { "物防", "魔防", "暂定", "主页", "图片" };
+
+    string info = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        nickNames = await api.GetUnitNickNamesAsync();
+        scoreDict = await api.GetClanBattleScores(Server);
+        var last = await storage.GetItemAsync<bool[]>("ImportTeamSettings");
+        if (last != null && last.Length >= 2)
+        {
+            withName = last[0];
+            isAuto = last[1];
+        }
+    }
+
+    string GetPlacheHolder()
+    {
+        return "格式（空格、制表符分割）：\n" +
+        "B1（Boss名，可与队伍同行）\n" +
+        (withName ? "队名1 " : string.Empty) + "角色1 2 3 4 5 伤害 备注1 （角色可使用昵称，伤害、备注选填）\n" +
+        (withName ? "队名2 " : string.Empty) + "角色6 7 8 9 10 伤害 备注2\n";
+    }
+
+    async Task Submit()
+    {
+        info = string.Empty;
+        var ls = lines.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var bossName = "A1";
+        var lastRate = 1d;
+        var list = new List<ClanBattleTeam>();
+        for (int i = 0; i < ls.Length; i++)
+        {
+            var vs = ls[i].Split(sps, StringSplitOptions.RemoveEmptyEntries);
+            if (vs.Length >= 1 && vs.Length <= 2)
+            {
+                if (IsBossName(vs[0]))
+                {
+                    bossName = vs[0].ToUpper();
+                    if (vs.Length == 2 && double.TryParse(vs[1], out var rate))
+                        lastRate = rate;
+                }
+            }
+            else if (vs.Length >= 5)
+            {
+                if (vs.Length >= 6 && IsBossName(vs[0]))
+                {
+                    bossName = vs[0].ToUpper();
+                    vs = vs[1..];
+                }
+                if (ignoreKeys.Contains(vs[0]))
+                    continue;
+                if (bossName.IsNullOrEmpty())
+                {
+                    info = $"缺少Boss信息，第{i + 1}行";
+                    return;
+                }
+                string teamName = bossName;
+                if (withName && vs.Length >= 6)
+                {
+                    teamName = vs[0];
+                    vs = vs[1..];
+                }
+                var t = new ClanBattleTeam
+                {
+                    Name = teamName,
+                    Boss = bossName[1] - '0',
+                    Phase = bossName[0].ToString(),
+                    PointRate = lastRate,
+                    Server = Server,
+                    UnitIds = new List<int>(),
+                    Auto = isAuto
+                };
+                if (!t.ParseBoss())
+                {
+                    info = $"无法解析Boss信息，第{i + 1}行";
+                    return;
+                }
+                bool ignored = false;
+                var unknown = new List<int>();
+                for (int j = 0; j < 5; j++)
+                {
+                    var uid = nickNames.Values.FirstOrDefault(n => n.Contains(vs[j]))?.UnitId;
+                    if (uid > 0)
+                        t.UnitIds.Add(uid.Value);
+                    else if (ignoreKeys.Contains(vs[j]))
+                    {
+                        ignored = true;
+                        break;
+                    }
+                    else
+                    {
+                        unknown.Add(j);
+                    }
+                }
+                if (ignored)
+                    continue;
+                if (unknown.Any())
+                {
+                    if (unknown.Count < 5)
+                    {
+                        info = $"无法解析“{vs[unknown[0]]}”，第{i + 1}行（昵称可在角色列表右键添加）";
+                        return;
+                    }
+                    else
+                        continue;
+                }
+
+                vs = vs[5..];
+                if (vs.Any())
+                {
+                    var dmg = vs[0].Trim('W').Trim('w').Trim('万');
+                    if (double.TryParse(dmg, out var d))
+                    {
+                        if (d > 100000)
+                            d /= 10000;
+                        t.Damage = Math.Round(d, 1);
+                        vs = vs[1..];
+                    }
+                    if (vs.Any())
+                    {
+                        var vs0 = vs[0];
+                        if (Regex.IsMatch(vs0, @"^\[.*\]$"))
+                        {
+                            if (vs0.Contains("[Auto]"))
+                                t.Auto = true;
+                            var m = Regex.Match(vs0, @"\[N:(.*?)\]");
+                            if (m.Success)
+                                t.Name = m.Groups[1].Value;
+                            vs = vs[1..];
+                        }
+                        t.Note = string.Join('，', vs);
+                    }
+                }
+                if (scoreDict.TryGetValue(t.PhaseName, out var sc))
+                    t.PointRate = sc;
+                list.Add(t);
+            }
+        }
+
+        await storage.SetItemAsync("ImportTeamSettings", new[] { withName, isAuto });
+        dialog.Close(list);
+    }
+
+    bool IsBossName(string s)
+    {
+        return Regex.IsMatch(s, @"^[a-fA-f][1-6]$");
+    }
+
+    void Cancel()
+    {
+        dialog.Close(flag);
+    }
+}

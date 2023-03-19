@@ -1,0 +1,123 @@
+﻿@page "/map"
+@inject ApiService api
+@inject ArmoryService arm
+@inject TooltipHelperService ts
+
+@if (areas != null)
+{
+    <RadzenTabs Change="TabChanged">
+        <Tabs>
+            @foreach (var g in groups)
+            {
+                <RadzenTabsItem Text="@g.Key">
+                    <div class="d-flex flex-row">
+                        <div class="f-20" style="padding-right:10px;">
+                            <RadzenListBox Data="@g" TextProperty="AreaName" @bind-Value="area" Style="width:100%;max-height:calc(100vh - 167px)">
+                            </RadzenListBox>
+                        </div>
+                        <div class="f-1">
+                            <div style="max-height: calc(100vh - 167px);overflow-y:auto">
+                                @if (area != null)
+                                {
+                                    @foreach (var q in area.Quests)
+                                    {
+                                        <div class="dashed-b-5">
+                                            <div style="margin-bottom:5px;display:flex">
+                                                <div>@q.QuestName</div>
+                                                @if (showEfficiency)
+                                                {
+                                                    <div style="color:gray;margin-left:10px">（效率：@(q.Efficiency?.ToString("0"))）</div>
+                                                }
+                                            </div>
+                                            <div class="d-flex flex-row flex-wrap" style="margin-bottom:5px">
+                                                @foreach (var d in q.DropItems)
+                                                {
+                                                    <div style="position:relative">
+                                                        <a href="@EquipLink(d)">
+                                                            <RadzenImage Path="@d.GetIcon()" Style="width:80px;height:80px"
+                                                                         MouseEnter="e=>ts.ShowString(e,GetTitle(d))" MouseLeave="ts.Close" />
+                                                        </a>
+                                                        @if (showEfficiency && d.Demand > 0)
+                                                        {
+                                                            <p class="equip-demand">@d.Demand</p>
+                                                        }
+                                                        <div class="text-center">@d.Odds%</div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </RadzenTabsItem>
+            }
+        </Tabs>
+    </RadzenTabs>
+}
+else
+{
+    <ProgressRing />
+}
+
+<style>
+    .equip-demand {
+        top: 60px;
+        height: 14px;
+        background: rgba(255,255,255,0.8);
+        position: absolute;
+        padding: 1px 2px;
+        border-width: 0;
+        right: 6px;
+        font-size: 12px;
+        line-height: 14px;
+    }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    List<AreaInfo> areas;
+    IEnumerable<IGrouping<string, AreaInfo>> groups;
+    AreaInfo area;
+    EquipmentStatusSet statusSet;
+    bool showEfficiency;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await api.InitSettings();
+        showEfficiency = api.Settings.EnableQuestEfficiency && (await authenticationStateTask).User.Identity.IsAuthenticated;
+
+        areas = null;
+        statusSet = await api.GetEquipmentStatusSetAsync();
+        areas = await api.GetAreaInfos(Server);
+        groups = areas.GroupBy(a => a.TypeName);
+        area = areas.First();
+        if (showEfficiency)
+        {
+            await arm.CalcQuestEfficiency(areas.SelectMany(a => a.Quests), Server);
+        }
+    }
+
+    string GetTitle(QuestDropItem di)
+    {
+        if (di.Id > 10_0000 && di.Id < 13_0000)
+            return statusSet.TryGetNameAndStatus(di.Id, Server);
+        return di.Name;
+    }
+
+    void TabChanged(int i)
+    {
+        area = groups.ElementAt(i).First();
+    }
+
+    string EquipLink(QuestDropItem d)
+    {
+        if (!d.IsItem)
+            return "/equip/" + d.Id.ToString();
+        return null;
+    }
+}

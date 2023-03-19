@@ -1,0 +1,79 @@
+﻿@page "/teams"
+@inject ApiService api
+@inject DialogService ds
+@inject DbService db
+@inject NavigationManager nav
+
+@attribute [Authorize]
+
+<RadzenCard Style="position:relative">
+    <div class="row align-items-center dashed-b-5 sticky-header">
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="创建编组" title="创建新编组" Click="Create"
+                      Style="margin-right:10px;padding:0 16px" />
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="自动编组" title="由作业表自动组合编组" Click="AutoGroup"
+                      Style="margin-right:10px;padding:0 16px" />
+        <RadzenButton ButtonStyle="ButtonStyle.Danger" Text="清空" title="清空编组" Click="Clear"
+                      Style="margin-right:10px;padding:0 16px" />
+    </div>
+    @if (teamGroups == null)
+    {
+        <ProgressRing />
+    }
+    else
+    {
+        <div class="row">
+            <div class="d-flex flex-wrap" style="margin:0 -5px">
+                @foreach (var tg in teamGroups)
+                {
+                    <TeamGroup Group="tg" GroupChanged="GetGroups" />
+                }
+            </div>
+        </div>
+    }
+</RadzenCard>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<UserTeamGroup> teamGroups;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await GetGroups();
+    }
+
+    async Task GetGroups()
+    {
+        teamGroups = await api.GetTeamGroupsAsync(Server);
+    }
+
+    async Task Create()
+    {
+        var ng = new UserTeamGroup { Name = "新编组", Server = Server, WithSupport = true, UnitReusable = false };
+        var d = await ds.OpenAsync<TeamGroupEdit>("创建编组", new Dictionary<string, object> { ["Group"] = ng }, new DialogOptions { Width = "820px" });
+        if (d is bool b && b)
+        {
+            await GetGroups();
+        }
+    }
+
+    async Task Clear()
+    {
+        if (teamGroups.IsNullOrEmpty())
+            return;
+        var b = await ds.OpenConfirmAsync("确认", $"删除所有编组？");
+        if (b == true)
+        {
+            var ids = teamGroups.Select(t => t.Id).ToList();
+            await api.DeletUserTeamGroupsAsync(Server, ids);
+        }
+    }
+
+    void AutoGroup()
+    {
+        nav.NavigateTo("/group");
+        //var d = await ds.OpenAsync<AutoGrouping>("自动编组", null, new DialogOptions { Width = "1080px" });
+        //await GetGroups();
+    }
+}

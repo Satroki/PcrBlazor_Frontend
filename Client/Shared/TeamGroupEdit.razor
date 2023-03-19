@@ -1,0 +1,331 @@
+﻿@inject ApiService api
+@inject DialogService ds
+
+<div>
+    <div class="d-flex align-items-center" style="margin-bottom:10px">
+        <div class="d-flex flex-row">
+            <RadzenTextBox @bind-Value="Group.Name" Placeholder="名称" />
+            <RadzenTextBox @bind-Value="Group.Note" Placeholder="备注" />
+        </div>
+        <div class="d-f-c" style="margin:0 10px">
+            <RadzenCheckBox TValue="bool" @bind-Value="Group.UnitReusable" Style="margin-right:5px" />
+            <RadzenLabel Text="角色复用" />
+        </div>
+        <div class="d-f-c" style="margin:0 10px">
+            <RadzenCheckBox TValue="bool" @bind-Value="Group.WithSupport" Style="margin-right:5px" />
+            <RadzenLabel Text="启用支援" />
+        </div>
+        <div class="d-flex f-1 align-items-center justify-content-end">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="保存" Style="margin-right:10px;padding:0 16px"
+                          Click="Save" />
+        </div>
+    </div>
+    <div>
+        @foreach (var t in Group.Teams)
+        {
+            <div class="d-flex align-items-center t-team" @onclick="_=>TeamChanged(t)" selected="@t.Selected">
+                <div>
+                    <RadzenButton Icon="remove" ButtonStyle="ButtonStyle.Danger" Click="_=>DelTeam(t)" Style="margin:0 10px 0 5px" />
+                </div>
+                <div class="d-flex align-items-center">
+                    @for (int i = 5; i > 0; i--)
+                    {
+                        if (t.Units.Count < i)
+                        {
+                            <div class="t-unit">
+                            </div>
+                        }
+                        else
+                        {
+                            var unit = t.Units[^i];
+                            if (unit is UserBoxLine line)
+                            {
+                                <div class="t-unit" title="@line.UnitName">
+                                    <img src="@line.Icon.GetUnitIcon()" @onclick="_=>RemoveFromTeam(line,t)" />
+                                </div>
+                            }
+                            else if (unit is UnitData ud)
+                            {
+                                <div class="t-unit t-unit-sp" title="@ud.UnitName">
+                                    <img src="@ud.Icon.GetUnitIcon()" @onclick="_=>RemoveFromTeam(ud,t)" />
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+                <div class="d-flex flex-column" style="margin-left:5px">
+                    <RadzenTextBox @bind-Value="t.Name" Placeholder="名称" Style="margin-bottom:3px" />
+                    <RadzenTextBox @bind-Value="t.Note" Placeholder="备注" />
+                </div>
+                <div class="d-flex flex-row" style="margin-left:10px">
+                    <RadzenButton Icon="list" title="编辑轴" ButtonStyle="ButtonStyle.Light" Click="_=>EditAxis(t)" />
+                    <RadzenButton Icon="share" title="分享" ButtonStyle="ButtonStyle.Success" Click="_=>Share(t)" Disabled="@(t.Units.Count<5)" Style="margin-left:5px" />
+                </div>
+            </div>
+        }
+        <RadzenButton Icon="add" Click="AddTeam" Style="margin:10px" />
+    </div>
+    <div class="dashed-t-5">
+        <RadzenRadioButtonList @bind-Value="filterType" TValue="int" Change="FilterChange" Style="margin:5px 0">
+            <Items>
+                <RadzenRadioButtonListItem Text="全部" Value="1" />
+                <RadzenRadioButtonListItem Text="前卫" Value="2" />
+                <RadzenRadioButtonListItem Text="中卫" Value="3" />
+                <RadzenRadioButtonListItem Text="后卫" Value="4" />
+                @if (Group.WithSupport)
+                {
+                    <RadzenRadioButtonListItem Text="支援" Value="5" />
+                }
+            </Items>
+        </RadzenRadioButtonList>
+        <div class="d-flex flex-wrap tg-units">
+            @if (filterType == 5)
+            {
+                foreach (var u in units.OrderBy(u => u.SearchAreaWidth))
+                {
+                    <div class="tg-unit-img" title="@u.UnitName" mask="@(!CheckUsable(u))" @onclick="@(_=>AddToTeam(u))">
+                        <img src="@u.Icon.GetUnitIcon()" />
+                    </div>
+                }
+            }
+            else
+            {
+                foreach (var u in boxUnits.OrderBy(u => u.SearchAreaWidth))
+                {
+                    <div class="tg-unit-img" title="@u.UnitName" mask="@(!CheckUsable(u))" @onclick="@(_=>AddToTeam(u))">
+                        <img src="@u.Icon.GetUnitIcon()" />
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .t-team {
+        border: 1px solid #dddddd;
+        padding: 5px;
+    }
+
+        .t-team[selected] {
+            border-color: skyblue;
+            background-color: skyblue;
+        }
+
+    .t-unit {
+        margin: 2px;
+        height: 76px;
+        width: 76px;
+        border-radius: 7px;
+        border: 2px solid #dddddd;
+        background-color: #eeebee;
+    }
+
+    .t-unit-sp {
+        border-color: orangered;
+    }
+
+    .t-unit img {
+        width: 72px;
+        height: 72px;
+        cursor: pointer;
+    }
+
+    .tg-units {
+        padding: 5px;
+        border: 1px solid #dddddd;
+        background-color: #f7f7f7;
+        border-radius: 5px;
+    }
+
+    .tg-unit-img {
+        cursor: pointer;
+        position: relative;
+        margin: 2px;
+    }
+
+        .tg-unit-img img {
+            width: 64px;
+            height: 64px;
+        }
+
+        .tg-unit-img[mask]:after {
+            content: '\A';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: rgba(0,0,0,0.7);
+            border-radius: 5px;
+        }
+</style>
+
+@code {
+    [Parameter]
+    public UserTeamGroup Group { get; set; }
+
+    int filterType = 1;
+    List<UserBoxLine> box = new List<UserBoxLine>();
+    IEnumerable<UserBoxLine> boxUnits = new List<UserBoxLine>();
+    List<UnitData> units = new List<UnitData>();
+    UserTeam currentTeam = new UserTeam() { Name = "队伍1" };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        boxUnits = box = await api.GetUserBox(Group.Server);
+        units = await api.GetUnitDatasAsync(Group.Server);
+        if (Group.Teams.IsNullOrEmpty())
+        {
+            Group.Teams = new List<UserTeam> { currentTeam };
+        }
+        else
+        {
+            currentTeam = Group.Teams.Last();
+        }
+        TeamChanged(currentTeam);
+    }
+
+    void FilterChange()
+    {
+        boxUnits = filterType switch
+        {
+            1 => box,
+            2 => box.Where(b => b.Position == UnitPosition.Front),
+            3 => box.Where(b => b.Position == UnitPosition.Middle),
+            4 => box.Where(b => b.Position == UnitPosition.Behind),
+            _ => null
+        };
+    }
+
+    void AddTeam()
+    {
+        var nt = new UserTeam { Name = $"队伍{Group.Teams.Count + 1}" };
+        Group.Teams.Add(nt);
+        TeamChanged(nt);
+    }
+
+    void DelTeam(UserTeam t)
+    {
+        if (Group.Teams.Count == 1)
+        {
+            Group.Teams[0].Clear();
+        }
+        else
+        {
+            Group.Teams.Remove(t);
+            TeamChanged(Group.Teams.First());
+        }
+    }
+
+    void TeamChanged(UserTeam t)
+    {
+        foreach (var tt in Group.Teams)
+        {
+            tt.Selected = t == tt;
+        }
+        currentTeam = t;
+    }
+
+    bool CheckUsable(UserBoxLine line)
+    {
+        if (Group.UnitReusable)
+            return currentTeam.UnitIds.IndexOf(line.UnitId) < 0;
+        return !Group.Teams.SelectMany(t => t.UnitIds).Any(u => u == line.UnitId);
+    }
+
+    bool CheckUsable(UnitData ud)
+    {
+        return !currentTeam.SupporterId.HasValue && !currentTeam.UnitIds.Any(u => u == ud.UnitId);
+    }
+
+    void AddToTeam(UserBoxLine line)
+    {
+        if (CheckUsable(line))
+        {
+            if (currentTeam.Units.Count < 5)
+            {
+                currentTeam.UnitIds.Add(line.UnitId);
+                currentTeam.Units.Add(line);
+                currentTeam.SortUnits();
+            }
+        }
+        else
+        {
+            if (currentTeam.UnitIds.IndexOf(line.UnitId) >= 0)
+            {
+                RemoveFromTeam(line, currentTeam);
+            }
+        }
+    }
+
+    void AddToTeam(UnitData ud)
+    {
+        if (CheckUsable(ud))
+        {
+            if (currentTeam.Units.Count < 5)
+            {
+                currentTeam.SupporterId = ud.UnitId;
+                currentTeam.Units.Add(ud);
+                currentTeam.SortUnits();
+            }
+        }
+        else
+        {
+            if (currentTeam.SupporterId == ud.UnitId)
+            {
+                RemoveFromTeam(ud, currentTeam);
+            }
+        }
+    }
+
+    void RemoveFromTeam(UserBoxLine line, UserTeam t)
+    {
+        if (t == currentTeam)
+        {
+            currentTeam.UnitIds.Remove(line.UnitId);
+            currentTeam.Units.Remove(line);
+        }
+    }
+
+    void RemoveFromTeam(UnitData ud, UserTeam t)
+    {
+        if (t == currentTeam)
+        {
+            currentTeam.SupporterId = null;
+            currentTeam.Units.Remove(ud);
+        }
+    }
+
+    async Task Save()
+    {
+        if (Group.Id > 0)
+            await api.EditUserTeamGroupAsync(Group);
+        else
+            await api.AddUserTeamGroupAsync(Group);
+        ds.Close(true);
+    }
+
+    async Task EditAxis(UserTeam t)
+    {
+        var r = await ds.OpenAsync<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["Links"] = t.Links });
+        if (r is string s)
+        {
+            t.Axis = s;
+        }
+    }
+
+    async Task Share(UserTeam t)
+    {
+        var cbt = new ClanBattleTeam
+        {
+            Axis = t.Axis,
+            Name = t.Name,
+            Note = t.Note,
+            Server = Group.Server,
+            UnitIds = t.Units.Select(u => u.UnitId).ToList()
+        };
+        api.SetUnits(cbt.Yield(), units);
+        var r = await ds.OpenAsync<TeamShare>("分享队伍", new Dictionary<string, object> { ["Team"] = cbt, ["ShowSave"] = false });
+    }
+}

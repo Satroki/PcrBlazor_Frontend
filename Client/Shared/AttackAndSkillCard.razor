@@ -1,0 +1,28 @@
+﻿<div style="@Style">
+    <AttackPatternCard UnitData="Data" />
+    <div style="margin-top:10px">
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.UnionBurst" SkillType="UB" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.UnionBurstEvo" SkillType="UB+" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Main1" SkillType="Main 1" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Main1Evo" SkillType="Main 1+" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Main2" SkillType="Main 2" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Main2Evo" SkillType="Main 2+" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Ex" SkillType="EX" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.ExEvo" SkillType="EX+" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Sp1" SkillType="SP 1" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Sp1Evo" SkillType="SP 1+" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Sp2" SkillType="SP 2" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Sp2Evo" SkillType="SP 2+" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Sp3" SkillType="SP 3" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Sp4" SkillType="SP 4" />
+        <SkillCard Unit="@Data" Skill="@Data.UnitSkillModel.Sp5" SkillType="SP 5" />
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public UnitData Data { get; set; }
+
+    [Parameter]
+    public string Style { get; set; }
+}

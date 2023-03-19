@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "PcrBlazor.Shared": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:4247;http://localhost:4248"
+    }
+  }
+}

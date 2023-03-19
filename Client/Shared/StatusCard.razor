@@ -1,0 +1,68 @@
+﻿<div class="d-flex flex-row flex-wrap dashed-t-5" style="margin:5px -5px 0 -5px">
+    @foreach (var key in UnitStatus.StatusKeys)
+    {
+        if (ShowField(key))
+        {
+            <div class="d-flex align-items-center justify-content-end f-50 status-div">
+                <p class="status-name">@UnitStatus.Names[key]</p>
+                @if (ShowAll)
+                {
+                    <p class="status-value">@newd[key] <span class="@GetClass(key)" hidden="@(diff[key]==0)">(@diff[key].ToString("+0;-0"))</span></p>
+                }
+                else
+                {
+                    <p class="@GetClass(key) status-value">@diff[key].ToString("+0;-0")</p>
+                }
+            </div>
+        }
+    }
+</div>
+
+
+@code {
+    [Parameter]
+    public UnitStatus OldStatus { get; set; }
+    [Parameter]
+    public UnitStatus NewStatus { get; set; }
+    [Parameter]
+    public bool ShowAll { get; set; }
+    Dictionary<string, double> diff;
+    Dictionary<string, double> oldd;
+    Dictionary<string, double> newd;
+
+    protected override void OnParametersSet()
+    {
+        if (oldd == null && OldStatus != null)
+        {
+            oldd = OldStatus.StatusDict;
+        }
+        Refresh();
+    }
+
+    bool ShowField(string key)
+    {
+        if (ShowAll)
+        {
+            return newd[key] != 0 || diff[key] != 0;
+        }
+        else
+        {
+            return diff[key] != 0;
+        }
+    }
+
+    string GetClass(string key)
+    {
+        return diff[key] >= 0 ? "red" : "limegreen";
+    }
+
+    public void Refresh()
+    {
+        if (NewStatus != null && OldStatus != null)
+        {
+            newd = NewStatus.StatusDict;
+            diff = NewStatus.GetStatusDiff(OldStatus);
+            StateHasChanged();
+        }
+    }
+}

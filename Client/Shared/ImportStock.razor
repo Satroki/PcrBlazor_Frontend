@@ -1,0 +1,61 @@
+﻿@inject DialogService dialog
+@inject ArmoryService arm
+
+<RadzenTextArea @bind-Value="lines" Style="height:300px;width:100%" Placeholder="一条一行:道具ID 数量 [囤积数量]">
+
+</RadzenTextArea>
+
+<div class="row justify-content-center">
+    <p style="margin-bottom:5px">数据由识别工具生成，<span><a target="_blank" href="@Constants.ToolUrl">下载地址</a></span>，提取码：@Constants.ToolUrlCode</p>
+    <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="导入" Click="Submit" Style="margin-left:10px" />
+        @if (!PieceMode)
+        {
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="导入并继续" Style="margin-left:10px"
+                      Click="AddAndContinue" />
+        }
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+    </div>
+</div>
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [Parameter]
+    public bool PieceMode { get; set; }
+
+    string lines;
+    bool flag = false;
+
+    async Task Submit()
+    {
+        var d = lines.GetStockData(out var exd);
+        if (!d.IsNullOrEmpty())
+        {
+            if (PieceMode)
+            {
+                dialog.Close(d);
+            }
+            else
+            {
+                await arm.UpdateStockNum(d, Server, exd);
+                dialog.Close(true);
+            }
+        }
+    }
+
+    async Task AddAndContinue()
+    {
+        var d = lines.GetStockData(out var exd);
+        if (!d.IsNullOrEmpty())
+        {
+            await arm.UpdateStockNum(d, Server, exd);
+            lines = string.Empty;
+            flag = true;
+        }
+    }
+
+    void Cancel()
+    {
+        dialog.Close(flag);
+    }
+}

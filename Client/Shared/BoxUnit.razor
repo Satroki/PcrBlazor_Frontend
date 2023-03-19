@@ -1,0 +1,135 @@
+﻿@using System.Text.Json
+@inject DialogService dialog
+@inject ApiService api
+@inject ArmoryService arm
+@inject TooltipHelperService ts
+
+<div class="box-unit" selected="@Line.Selected">
+    <div class="d-flex">
+        <div class="col-center f-1" @onclick="@(arg=>Edit())" style="cursor:pointer;position:relative">
+            <RadzenImage Path="@Line.Icon.GetUnitIcon()" class="box-unit-img" MouseEnter="arg=>ts.ShowString(arg,Line.UnitName)" MouseLeave="ts.Close" />
+            <TraceDisplay Text="等级" SpText="++" SpState="@Line.LevelBreak" Trace="false" Value="@Line.Level" TargetValue="0" />
+            <TraceDisplay Text="好感" Trace="true" Value="@Line.LoveLevel" TargetValue="@Line.TargetLoveLevel" />
+            @if (Line.Priority > 0)
+            {
+                <p class="box-unit-priority">@Line.Priority</p>
+            }
+            else if (Line.Priority < 0)
+            {
+                <p class="box-unit-priority" style="background-color: rgba(0,255,0,0.7);">@Line.Priority</p>
+            }
+        </div>
+        <div class="f-1" @onclick="@(arg=>Edit())" style="cursor:pointer">
+            <BoxUnitEquipments Line="Line" ShowStock="@ShowStock" />
+        </div>
+    </div>
+    <div class="d-flex">
+        <div class="f-50">
+            <TraceDisplay Text="Rank" Trace="true" Value="@Line.Promotion" TargetValue="@Line.TargetPromotion" AdditionalValue="@addv" />
+        </div>
+        <div class="f-50">
+            @if (showUnique)
+            {
+                <TraceDisplay Text="专武" Trace="true" Value="@Line.UniqueEquipRank" TargetValue="@Line.TargetUniqueEquipRank" />
+            }
+        </div>
+    </div>
+    <div class="d-f-c" style="position:relative">
+        @if (Line.Trace)
+        {
+            if (Line.IsFinished)
+            {
+                <i class="rzi unit-trace-icon">done_all</i>
+            }
+            else
+            {
+                <i class="rzi unit-trace-icon">done</i>
+            }
+        }
+        <a href="/unit/@Line.UnitId" class="rzi unit-info-icon">info</a>
+        <RarityStar Stars="@star" Value="@Line.Rarity" TargetValue="@Line.TargetRarity" HasUnique="@Line.HasUniqueEquip" NoEquip="@(Line.UniqueEquipRank==0)" />
+    </div>
+    @if (!Line.Note.IsNullOrEmpty())
+    {
+        <div class="box-unit-note">
+            <RadzenLabel Text="@Line.Note" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public UserBoxLine Line { get; set; }
+    [Parameter]
+    public bool AllowEdit { get; set; }
+    [Parameter]
+    public bool ShowStock { get; set; }
+    [Parameter]
+    public bool SelectMode { get; set; }
+    [Parameter]
+    public EventCallback<bool> SelectedChanged { get; set; }
+    [Parameter]
+    public EventCallback StockChanged { get; set; }
+
+    int star = 5;
+    bool showUnique = false;
+    string addv = null;
+
+    async Task Edit()
+    {
+        if (!AllowEdit)
+            return;
+        if (SelectMode)
+        {
+            Line.Selected = !Line.Selected;
+            await SelectedChanged.InvokeAsync(Line.Selected);
+        }
+        else
+        {
+            arm.StartTrackBoxLines(new List<UserBoxLine> { Line });
+            var copy = Line.JsonCopy();
+            var nl = await dialog.OpenAsync<BoxUnitEdit>(Line.UnitName,
+                new Dictionary<string, object>
+                    {
+                        ["Line"] = copy,
+                        ["OriLine"] = Line
+                    },
+                new DialogOptions { Width = "550px" });
+            if (nl is BoxEditModel bem && bem.Line != null)
+            {
+                await arm.StopTrackBoxLines(new List<UserBoxLine> { bem.Line }, bem.NoConsume);
+                await StockChanged.InvokeAsync(Line);
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Line != null)
+        {
+            //var si = await api.GetServerInfoAsync(Line.Server);
+            star = Line.HasRarity6 ? 6 : 5;
+            if (star == 5 && Line.Server == "cn" && api.Settings.UseJpRarity6)
+            {
+                var r6 = (await api.GetServerInfoAsync("jp")).Rarity6Units.Contains(Line.UnitId);
+                if (r6)
+                    star = 6;
+            }
+            showUnique = api.Settings.AllowAllUnique || Line.HasUniqueEquip;
+            if (!SelectMode)
+            {
+                Line.Selected = false;
+            }
+            if (api.Settings != null)
+            {
+                var rs = api.Settings.GetRankSetting(Line.Server);
+                if (rs.AllowAllRank && !rs.ApplyToAll && Line.MaxRank == Line.TargetPromotion && Line.MaxSlots < 6)
+                {
+                    addv = $".{Line.MaxSlots}";
+                    return;
+                }
+            }
+            addv = null;
+        }
+    }
+}

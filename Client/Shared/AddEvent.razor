@@ -1,0 +1,133 @@
+﻿@inject ApiService api
+@inject DialogService ds
+
+<div>
+    <div class="row">
+        <div class="col-md-3 align-items-center d-flex">
+            <RadzenLabel Text="常用" />
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown Data="tmpls" TextProperty="Key" ValueProperty="Value" TValue="EventTemple"
+                            Change="SelectingChanged" input-block />
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col-md-3 align-items-center d-flex">
+            <RadzenLabel Text="标题" />
+        </div>
+        <div class="col-md-9">
+            <RadzenTextArea @bind-Value="Event.Title" Rows="2" input-block />
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col-md-3 align-items-center d-flex">
+            <RadzenLabel Text="类型" />
+        </div>
+        <div class="col-md-9">
+            <RadzenDropDown Data="types" ValueProperty="Key" TextProperty="Value" @bind-Value="Event.Type" TValue="EventType" input-block />
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col-md-3 align-items-center d-flex">
+            <RadzenLabel Text="开始时间" />
+        </div>
+        <div class="col-md-9">
+            <RadzenDatePicker TValue="DateTime" @bind-Value="Event.LocalStartTime" input-block
+                              ShowTime="true" ShowSeconds="false" HoursStep="1" MinutesStep="1" DateFormat="yyyy/MM/dd HH:mm" />
+            <div class="d-flex align-items-center">
+                @foreach (var t in startTimes)
+                {
+                    <div class="time-div" @onclick="_=>SetSTime(t)">@t</div>
+                }
+            </div>
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col-md-3 align-items-center d-flex">
+            <RadzenLabel Text="结束时间" />
+        </div>
+        <div class="col-md-9">
+            <RadzenDatePicker Placeholder="结束时间" TValue="DateTime" @bind-Value="Event.LocalEndTime" input-block
+                              ShowTime="true" ShowSeconds="false" HoursStep="1" MinutesStep="1" DateFormat="yyyy/MM/dd HH:mm" />
+            <div class="d-flex align-items-center">
+                @foreach (var t in endTimes)
+                {
+                    <div class="time-div" @onclick="_=>SetETime(t)">@t</div>
+                }
+            </div>
+        </div>
+    </div>
+    <br />
+    <div class="row justify-content-center">
+        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="保存" Click="Save" />
+            <RadzenButton ButtonStyle="ButtonStyle.Danger" Text="删除" Click="Delete" Visible="@(Event.Id>0)" style="margin-left: 10px;" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="margin-left: 10px;" Text="取消" Click="@Cancel" />
+        </div>
+    </div>
+</div>
+
+<style>
+    .time-div {
+        margin: 5px 5px 0 0;
+        padding: 5px 10px;
+        background-color: dodgerblue;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public EventCalendar Event { get; set; }
+
+    string[] startTimes = new[] { "5:00", "9:00", "11:00", "12:00", "14:00", "15:00" };
+    string[] endTimes = new[] { "4:59", "8:59", "10:59", "14:00", "15:00", "23:59" };
+
+    Dictionary<string, EventTemple> tmpls = EventTemple.Temples.Value;
+
+    Dictionary<EventType, string> types = Enum.GetValues(typeof(EventType)).Cast<EventType>().ToDictionary(e => e, e => e.GetDescription());
+
+
+    void SelectingChanged(object v)
+    {
+        if (v is EventTemple tmpl)
+        {
+            tmpl.UpdateEvent(Event);
+        }
+    }
+
+    async Task Save()
+    {
+        var e = await api.AddOrUpdateEvent(Event);
+        if (e != null)
+            ds.Close(true);
+    }
+
+    async Task Delete()
+    {
+        var e = await api.DeleteEvent(Event.Id);
+        if (e)
+            ds.Close(true);
+    }
+
+    void Cancel()
+    {
+        ds.Close(false);
+    }
+
+    void SetSTime(string t)
+    {
+        Event.LocalStartTime = Event.LocalStartTime.Date + TimeSpan.Parse(t);
+    }
+
+    void SetETime(string t)
+    {
+        Event.LocalEndTime = Event.LocalEndTime.Date + TimeSpan.Parse(t);
+    }
+}

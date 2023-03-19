@@ -1,0 +1,126 @@
+﻿@inject ApiService api
+@inject DialogService ds
+@inject TooltipHelperService ts
+
+<div class="d-flex align-items-center">
+    <RadzenLabel Text="分组：" Style="margin:0 5px 0 0" />
+    <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="true" TextProperty="Name" ValueProperty="Id"
+                    Change="GroupChanged" Data=@groups @bind-Value=@groupIds
+                    Style="width:130px;margin-right:10px" />
+    <RadzenLabel Text="Rank ≥" Style="margin:0 5px 0 0" />
+    <RadzenNumeric Min="0" TValue="int" @bind-Value="Settings.Rank" Style="width:60px" />
+    <RadzenLabel Text="等级 ≥" Style="margin:0 5px 0 10px" />
+    <RadzenNumeric Min="0" TValue="int" @bind-Value="Settings.Level" Style="width:60px" />
+    <RadzenLabel Text="星级 ≥" Style="margin:0 5px 0 10px" />
+    <RadzenNumeric Min="0" TValue="int" @bind-Value="Settings.Rarity" Style="width:60px" />
+</div>
+<div style="margin:10px 0">
+    <RadzenLabel Text="排除指定角色：" Style="margin:0 5px 0 0" />
+    <RadzenLabel Text="清空" Style="margin:0 5px 0 0;color:dodgerblue;cursor:pointer" @onclick="ClearUnits"/>
+
+    <div class="ags-u-div">
+        @foreach (var u in units.OrderBy(u => u.SearchAreaWidth))
+        {
+            <div class="ags-unit" @onclick="_=>RemoveUnit(u)">
+                <RadzenImage Path="@u.Icon.GetUnitIcon()" MouseEnter="e=>ts.ShowString(e,u.UnitName)" MouseLeave="ts.Close" />
+            </div>
+        }
+        <div class="ags-unit ags-add d-f-c" style="" @onclick="PickUnits">
+            <i class="rzi" style="font-size:64px;color:#adadad;">add</i>
+        </div>
+    </div>
+</div>
+<div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="确定"
+                  Click="Ok" />
+</div>
+
+
+<style>
+    .ags-u-div {
+        display: flex;
+        flex-wrap: wrap;
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+    }
+
+    .ags-unit {
+        border: 1px solid;
+        border-color: transparent;
+        border-radius: 5px;
+        margin: 1px;
+    }
+
+        .ags-unit img {
+            width: 72px;
+            height: 72px;
+        }
+
+    .ags-add {
+        cursor: pointer;
+        border-color: #adadad;
+        width: 76px;
+        height: 76px;
+    }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [Parameter]
+    public GroupingSettings Settings { get; set; }
+
+    List<GroupRecord> groups = new();
+    IEnumerable<int> groupIds;
+    List<UnitData> units = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        groups = api.GetBoxGroupRecords();
+        groupIds = Settings.GroupIds?.ToList();
+        if (!Settings.ExceptUnits.IsNullOrEmpty())
+        {
+            var all = await api.GetAllUnitDatasAsync(Server);
+            units = all.Where(u => Settings.ExceptUnits.Contains(u.UnitId)).ToList();
+        }
+    }
+
+    void GroupChanged(object obj)
+    {
+        if (obj is IEnumerable<int> arr)
+        {
+            Settings.GroupIds = arr.ToList();
+        }
+        else
+        {
+            Settings.GroupIds = null;
+        }
+    }
+
+    async Task PickUnits()
+    {
+        var box = await api.GetUserBox(Server);
+        var d = await ds.OpenUnitPickerAsync(null, box.Select(b => b.UnitId).ToList(), Settings.ExceptUnits);
+        if (d.IsNullOrEmpty())
+            units.Clear();
+        else
+            units = d;
+        Settings.ExceptUnits = units.Select(u => u.UnitId).ToList();
+    }
+
+    void RemoveUnit(UnitData u)
+    {
+        units?.Remove(u);
+        Settings.ExceptUnits?.Remove(u.UnitId);
+    }
+    void ClearUnits()
+    {
+        units.Clear();
+        Settings.ExceptUnits = new();
+    }
+    async Task Ok()
+    {
+        await api.SaveGroupingSettings(Settings, Server);
+        ds.Close();
+    }
+}

@@ -1,0 +1,189 @@
+﻿@page "/statusComparer"
+
+@inject ApiService api
+@inject DialogService ds
+@inject TooltipHelperService ts
+
+<RadzenCard Style="position:relative">
+    <div class="row align-items-center">
+        <RadzenSplitButton Text="选取角色" Click="PickUnits" Disabled="calcing">
+            <ChildContent>
+                <RadzenSplitButtonItem Text="清空" />
+            </ChildContent>
+        </RadzenSplitButton>
+
+        <RadzenButton Text="计算" Click="Calc" Disabled="calcing" ButtonStyle="ButtonStyle.Secondary" Style="margin:0 10px" />
+        <RadzenButton Text="导出" Disabled="calcing" ButtonStyle="ButtonStyle.Info" Click="Export" />
+        <RadzenCheckBox @bind-Value="withRB" TValue="bool" Style="margin:0 5px 0 10px" />
+        <RadzenLabel Text="包含Rank Bonus" />
+    </div>
+    @if (jpsi != null)
+    {
+        <div class="row" style="display:block">
+            <div class="d-flex unit-prop-div" style="margin-top:10px;">
+                <p style="margin-right:0">当前：</p>
+                <UnitProperties Line="oldLine" ServerInfo="jpsi" Rarity6="true" />
+            </div>
+            <div class="d-flex unit-prop-div" style="margin-top:10px">
+                <p style="margin-right:0">目标：</p>
+                <UnitProperties Line="newLine" ServerInfo="jpsi" Rarity6="true" />
+            </div>
+        </div>
+    }
+    <div class="row">
+        <table class="table table-bordered prop-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>距离</th>
+                    @foreach (var key in statusKeys)
+                    {
+                        <th>@UnitStatus.Names[key]</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var d in data)
+                {
+                    <tr>
+                        <td>
+                            <RadzenImage Style="width:64px;height:64px;margin:2px" Path="@d.Unit.Icon.GetUnitIcon()" MouseEnter="e=>ts.ShowString(e,d.Unit.UnitName)"
+                                     MouseLeave="ts.Close" />
+                        </td>
+                        <td>@d.Unit.SearchAreaWidth</td>
+                        @foreach (var key in statusKeys)
+                        {
+                            var v = d.StatusDiff?[key] ?? 0;
+                            <td class="@GetClass(v)">@v.ToString("+0;-0;0")</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</RadzenCard>
+
+<style>
+    .prop-table {
+        text-align: center;
+        margin-top: 10px;
+    }
+
+        .prop-table th {
+            position: sticky;
+            top: 50px;
+            z-index: 10;
+            border: 1px solid #dee2e6;
+            background-color: white;
+            padding: 0 2px;
+        }
+
+        .prop-table td {
+            border: 1px solid #dee2e6;
+            padding: 0 2px;
+        }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<UnitComparedStatus> data = new List<UnitComparedStatus>();
+    Dictionary<int, UnitComparedStatus> unitDict = new Dictionary<int, UnitComparedStatus>();
+    UnitStatusCalculator calculator;
+    UserBoxLine oldLine = new UserBoxLine();
+    UserBoxLine newLine = new UserBoxLine();
+    UnitServerInfo jpsi;
+    bool calcing = false;
+    bool withRB = true;
+    List<string> statusKeys = UnitStatus.StatusKeys.ToList();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        statusKeys.Remove(nameof(UnitStatus.PhysicalPenetrate));
+        statusKeys.Remove(nameof(UnitStatus.MagicPenetrate));
+        calculator = await api.GetStatusCalculator(Server);
+        var si = await api.GetServerInfoAsync(Server);
+        jpsi = await api.GetServerInfoAsync("jp");
+        oldLine.Level = newLine.Level = si.MaxLevel;
+        oldLine.Rarity = newLine.Rarity = 5;
+        oldLine.LoveLevel = newLine.LoveLevel = si.MaxLoveLevel;
+        oldLine.UniqueEquipRank = newLine.UniqueEquipRank = si.MaxUniqueLevel;
+        oldLine.Promotion = newLine.Promotion = si.MaxRank;
+        oldLine.Promotion--;
+        oldLine.SetAllSlots(true);
+        newLine.SetAllSlots(true);
+    }
+
+    async Task PickUnits(RadzenSplitButtonItem bi)
+    {
+        if (bi != null)
+        {
+            data.Clear();
+            unitDict.Clear();
+            return;
+        }
+        var list = await ds.OpenUnitPickerAsync(unitDict.Keys.ToList());
+        if (!list.IsNullOrEmpty())
+        {
+            foreach (var ud in list)
+            {
+                unitDict.Add(ud.UnitId, new UnitComparedStatus(ud));
+            }
+        }
+        data = unitDict.Values.OrderBy(d => d.Unit.SearchAreaWidth).ToList();
+    }
+
+    async Task Calc()
+    {
+        if (data.IsNullOrEmpty())
+            return;
+        calcing = true;
+        await Task.Yield();
+        foreach (var item in data)
+        {
+            if (item.SourceData == null)
+                item.SourceData = await api.GetUnitSourceDataAsync(item.UnitId);
+            oldLine.UnitId = newLine.UnitId = item.UnitId;
+            var os = calculator.CalcUnitStatus(oldLine, item.SourceData, null, null, null, true, withRB);
+            var ns = calculator.CalcUnitStatus(newLine, item.SourceData, null, null, null, true, withRB);
+            item.StatusDiff = ns.GetStatusDiff(os);
+        }
+        calcing = false;
+    }
+
+    string GetClass(double v)
+    {
+        return v switch
+        {
+            > 0 => "red",
+            < 0 => "limegreen",
+            _ => ""
+        };
+    }
+
+    async Task Export()
+    {
+        if (data.IsNullOrEmpty())
+            return;
+        var sb = new System.Text.StringBuilder();
+        sb.Append("姓名").Append(',');
+        sb.Append("距离");
+        foreach (var k in statusKeys)
+        {
+            sb.Append(',').Append(UnitStatus.Names[k]);
+        }
+        sb.AppendLine();
+        foreach (var d in data)
+        {
+            sb.Append(d.Unit.UnitName).Append(',');
+            sb.Append(d.Unit.SearchAreaWidth);
+            foreach (var k in statusKeys)
+            {
+                sb.Append(',').Append(d.StatusDiff?[k] ?? 0);
+            }
+            sb.AppendLine();
+        }
+        await api.SaveStringAsFile($"R{oldLine.Promotion}-{oldLine.Slots.Count(s => s)}_R{newLine.Promotion}-{newLine.Slots.Count(s => s)}.csv", sb.ToString());
+    }
+}

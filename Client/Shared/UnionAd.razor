@@ -1,0 +1,71 @@
+﻿@inject ApiService api
+@inject TooltipHelperService ts
+
+@if (ad != null)
+{
+    <div style="margin-top:15px;">
+        <div class="jd-goods">
+            <a href="@ad.Url" target="_blank">
+                <RadzenImage Path="@ad.Image" MouseEnter="e=>ts.ShowString(e,ad.Title, TooltipPosition.Top)" MouseLeave="ts.Close" />
+            </a>
+            <div class="jd-goods-btn" style="left:0" @onclick="Get">
+                <p>推广</p>
+                <i class="rzi">refresh</i>
+            </div>
+            <div class="jd-goods-btn" style="right:0" @onclick="_ => ad = null">
+                <i class="rzi">close</i>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .jd-goods {
+        height: 220px;
+        width: 220px;
+        margin: auto;
+        position: relative
+    }
+
+        .jd-goods img {
+            width: 220px;
+            height: 220px;
+        }
+
+    .jd-goods-btn {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        top: 0;
+        background-color: rgba(0,0,0,0.7);
+        color: white;
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0 4px;
+        height: 21px;
+    }
+
+        .jd-goods-btn p {
+            margin: 0 2px 0 0;
+        }
+
+        .jd-goods-btn i {
+            font-size: 0.8rem;
+        }
+</style>
+
+@code {
+    JdUnionAd ad { get; set; }
+
+    ElementReference adDiv;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Get();
+    }
+
+    async Task Get()
+    {
+        ad = await api.GetAd();
+    }
+}

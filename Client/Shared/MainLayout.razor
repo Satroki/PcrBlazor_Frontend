@@ -1,0 +1,102 @@
+﻿@inherits LayoutComponentBase
+@inject ILocalStorageService storage
+@inject ApiService api
+@inject NavigationManager nav
+@inject IJSRuntime js
+@inject TooltipHelperService ts
+
+<CascadingValue Value="@server" Name="Server">
+    <RadzenDialog />
+    <RadzenNotification />
+    <RadzenTooltip />
+    <RadzenContextMenu />
+    <RadzenHeader>
+        <ChildContent>
+            <div class="row justify-content-start align-items-center">
+                <div class="col-6 d-flex align-items-center">
+                    <RadzenSidebarToggle Click="@(args => { sidebarExpanded = !sidebarExpanded; bodyExpanded = !bodyExpanded; })">
+                    </RadzenSidebarToggle>
+                    <RadzenLabel Text="公主连结 Box" Style="cursor:pointer" @onclick="@(()=>nav.NavigateTo("/"))">
+                    </RadzenLabel>
+                    <RadzenRadioButtonList @bind-Value="server" TValue="string" Style="margin-left:50px;"
+                                           Change="@ServerChangedAsync">
+                        <Items>
+                            <RadzenRadioButtonListItem Text="简中服" Value="@("cn")" />
+                            <RadzenRadioButtonListItem Text="日语服" Value="@("jp")" />
+                        </Items>
+                    </RadzenRadioButtonList>
+                </div>
+                <div class="col-6 d-flex align-items-center justify-content-end">
+                    <div class="d-none d-md-inline-flex align-items-center" style="margin-right:20px">
+                        <LoginDisplay />
+                    </div>
+                </div>
+            </div>
+        </ChildContent>
+    </RadzenHeader>
+    <div class="main">
+        <RadzenBody @ref="@body0" @bind-Expanded="@bodyExpanded" class="margin-b-0">
+            <ChildContent>
+                <RadzenContentContainer Name="main">
+                    @Body
+                </RadzenContentContainer>
+            </ChildContent>
+        </RadzenBody>
+    </div>
+
+    <RadzenSidebar @ref="@sidebar0" @bind-Expanded="@sidebarExpanded" class="b-0">
+        <ChildContent>
+            <RadzenPanelMenu>
+                <RadzenPanelMenuItem Text="我的Box" Path="/" />
+                <RadzenPanelMenuItem Text="我的队伍" Path="teams" />
+                <RadzenPanelMenuItem Text="自动编组" Path="group" />
+                <RadzenPanelMenuItem Text="公会 / 收藏" Path="box">
+                    <RadzenPanelMenuItem Text="收藏的Box" Path="box" />
+                    <RadzenPanelMenuItem Text="公会招募" Path="recruit" />
+                </RadzenPanelMenuItem>
+                <RadzenPanelMenuItem Text="角色列表" Path="units" />
+                <RadzenPanelMenuItem Text="装备库" Path="armory" />
+                <RadzenPanelMenuItem Text="地图掉落" Path="map" />
+                <RadzenPanelMenuItem Text="体力规划" Path="stamina" />
+                <RadzenPanelMenuItem Text="活动日历" Path="calendar" />
+                <RadzenPanelMenuItem Text="团队战" Path="clanbattle" />
+                <RadzenPanelMenuItem Text="其他工具">
+                    <RadzenPanelMenuItem Text="属性比较" Path="statusComparer" />
+                    <RadzenPanelMenuItem Text="估算设置" Path="traceSetting" />
+                </RadzenPanelMenuItem>
+                <RadzenPanelMenuItem Text="设置" Path="setting" />
+                <RadzenPanelMenuItem Text="关于" Path="about" />
+                <AuthorizeView Roles="Admin">
+                    <RadzenPanelMenuItem Text="管理" Path="manage" />
+                </AuthorizeView>
+                @*<UnionAd />*@
+            </RadzenPanelMenu>
+        </ChildContent>
+    </RadzenSidebar>
+</CascadingValue>
+
+
+
+@code{
+    RadzenSidebar sidebar0;
+    RadzenBody body0;
+    bool sidebarExpanded = true;
+    bool bodyExpanded = false;
+    bool newVersion;
+    string server = "cn";
+
+    protected override async Task OnInitializedAsync()
+    {
+        server = await storage.GetItemAsync<string>("server") ?? "cn";
+    }
+
+    async Task ServerChangedAsync(string s)
+    {
+        await storage.SetItemAsync("server", server);
+    }
+
+    void Reload()
+    {
+        _ = js.InvokeVoidAsync("reload");
+    }
+}

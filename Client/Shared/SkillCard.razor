@@ -1,0 +1,68 @@
+﻿@inject DialogService ds
+
+@if (Skill != null)
+{
+    <div class="skill-card">
+        <RadzenFieldset>
+            <HeaderTemplate>
+                <div class="skill-header">@SkillType</div>
+            </HeaderTemplate>
+            <ChildContent>
+                <div class="d-flex">
+                    <div class="skill-col-1">
+                        <div class="d-flex skill-row-1">
+                            <img src="@Skill.Icon.GetSkillIcon()" />
+                            <div class="skill-name-div">
+                                <p>@Skill.Name</p>
+                                @if (Skill.CastTime > 0)
+                                {
+                                    <p>施放：@Skill.CastTime s</p>
+                                }
+                            </div>
+                        </div>
+                        <div class="skill-row-2">@Skill.Description</div>
+                    </div>
+                    <div class="skill-col-2">
+                        <ol>
+                            @foreach (var act in Skill.Actions)
+                            {
+                                if (act.RelatedUnit.HasValue)
+                                {
+                                    var uid = act.RelatedUnit.Value;
+                                    var vs = act.Description.Split(uid.ToString());
+                                    <li>
+                                        @vs[0]<span style="color:#479cc8;cursor:pointer" @onclick="_=>ShowSummonUnit(uid)">@uid</span>@vs[1]
+                                    </li>
+                                }
+                                else
+                                {
+                                    <li>@act.Description</li>
+                                }
+                            }
+                        </ol>
+                    </div>
+                </div>
+            </ChildContent>
+        </RadzenFieldset>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public SkillModel Skill { get; set; }
+
+    [Parameter]
+    public UnitData Unit { get; set; }
+
+    [Parameter]
+    public string SkillType { get; set; }
+
+    public void ShowSummonUnit(int uid)
+    {
+        var su = Unit.SubUnits.FirstOrDefault(u => u.UnitId == uid);
+        if (su != null)
+        {
+            ds.Open<SummonUnitInfo>(su.UnitName ?? su.UnitId.ToString(), new Dictionary<string, object> { ["Unit"] = su });
+        }
+    }
+}

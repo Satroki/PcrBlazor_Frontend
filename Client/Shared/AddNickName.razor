@@ -1,0 +1,78 @@
+﻿@inject ApiService api
+@inject DialogService ds
+
+<div class="row">
+    <div class="col-md-2 align-items-center d-flex">
+        <RadzenLabel Text="当前昵称: " />
+    </div>
+    <div class="col-md-10">
+        <RadzenLabel Text="@current" />
+    </div>
+</div>
+<br />
+@if (IsAdmin)
+{
+    <div class="row">
+        <div class="col-md-2 align-items-center d-flex">
+            <RadzenLabel Text="临时昵称: " />
+        </div>
+        <div class="col-md-10">
+            <RadzenLabel Text="@requests" />
+        </div>
+    </div>
+    <br />
+}
+<div class="row">
+    <div class="col-md-2 align-items-center d-flex">
+        <RadzenLabel Text="新昵称: " />
+    </div>
+    <div class="col-md-10">
+        <RadzenTextBox @bind-Value="newNames" input-block />
+    </div>
+</div>
+<br />
+<div class="row justify-content-center">
+    <div class="col-md-12 d-flex align-items-center justify-content-center" style="margin-top: 10px;">
+        @if (IsAdmin)
+        {
+            <RadzenCheckBox @bind-Value="clear" />
+            <RadzenLabel Text="清空临时" Style="margin:0 10px 0 5px" />
+        }
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="添加" Click="@Add" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int UnitId { get; set; }
+    [Parameter]
+    public UnitNickNames NickNames { get; set; }
+    [Parameter]
+    public bool IsAdmin { get; set; }
+
+    string current;
+    string requests;
+    string newNames;
+    bool clear;
+
+    protected override void OnInitialized()
+    {
+        current = NickNames?.ToString();
+        requests = NickNames?.ToString(true);
+    }
+
+    async Task Add()
+    {
+        if (!newNames.IsNullOrEmpty() || (clear && IsAdmin))
+        {
+            var names = await api.AddNickNames(UnitId, newNames, clear, IsAdmin);
+            current = names?.ToString();
+        }
+    }
+
+    void Cancel()
+    {
+        ds.Close();
+    }
+}

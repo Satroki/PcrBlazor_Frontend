@@ -1,0 +1,290 @@
+﻿@page "/manage"
+@inject HttpClient hc
+@inject NotificationService notify
+@inject DialogService dialog
+@inject ApiService api
+@inject UserService us
+@inject ILocalStorageService storage
+@using System.Reflection;
+
+<RadzenCard>
+    <RadzenFieldset Text="数据维护">
+        <div style="margin:10px 0" class="d-flex align-items-center">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="更新昵称" Click="@SyncNick" Disabled="@loading" Style="margin-right:10px" />
+            <RadzenTextBox Placeholder="uid" @bind-Value="uid" />
+            <RadzenTextBox Placeholder="昵称" @bind-Value="nick" />
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="添加昵称" Click="@AddNick" Disabled="@loading" />
+        </div>
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="添加掉落" Click="@AddDrop" Disabled="@loading" />
+        <RadzenUpload Multiple="false" Accept="*" Url="@uploadUrl" ChooseText="导入Box"
+                      Complete="UploadComplete" Error="UploadError">
+            <RadzenUploadHeader Name="Authorization" Value="@jwt" />
+        </RadzenUpload>
+    </RadzenFieldset>
+    <RadzenFieldset Text="同步数据">
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="同步图片" Click="@SyncImage" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="国服" Click="@SyncCnDb" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="日服" Click="@SyncJpDb" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="检查国服角色名" Click="@SyncCnDbName" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="刷新缓存" Click="@RefreshCache" />
+    </RadzenFieldset>
+    <RadzenFieldset Text="其他">
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="统计" Click="@GetStatistics" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="添加日志" Click="@AddUpdateLog" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="清理文件" Click="@CleanTmp" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="清空队伍-中" Click="@(_=>ClearTeams("cn"))" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="清空队伍-日" Click="@(_=>ClearTeams("jp"))" Disabled="@loading" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="刷新广告" Click="@RefreshAds" Disabled="@loading" />
+        <div style="margin:10px 0" class="d-flex align-items-center">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="清空文档" Click="ClearDocTeams" Disabled="@loading" />
+            <RadzenUpload Multiple="true" Accept="*" Url="@uploadDocUrl" ChooseText="上传文档"
+                          Complete="UploadDocComplete" Error="UploadDocError">
+                <RadzenUploadHeader Name="Authorization" Value="@jwt" />
+            </RadzenUpload>
+        </div>
+    </RadzenFieldset>
+    <p style="white-space:pre-wrap">@msg</p>
+
+    <RadzenFieldset Text="用户管理">
+        <div>
+            <RadzenTextBox @bind-Value="user" Placeholder="用户名" />
+            <RadzenTextBox @bind-Value="email" Style="margin-left:20px" Placeholder="邮箱" />
+        </div>
+        <RadzenTextArea Value="@token" Style="display:block;width:600px" Rows="3" Placeholder="token"></RadzenTextArea>
+        <div>
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="获取Token" Click="@GetToken" Disabled="@loading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="设置邮箱" Click="@SetEmail" Disabled="@loading" Style="margin-left:20px" />
+        </div>
+    </RadzenFieldset>
+</RadzenCard>
+<br />
+<RadzenButton ButtonStyle="ButtonStyle.Danger" Text="Danger" />
+<RadzenButton ButtonStyle="ButtonStyle.Info" Text="Info" />
+<RadzenButton ButtonStyle="ButtonStyle.Light" Text="Light" />
+<RadzenButton ButtonStyle="ButtonStyle.Primary" Text="Primary" />
+<RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="Secondary" />
+<RadzenButton ButtonStyle="ButtonStyle.Success" Text="Success" />
+<RadzenButton ButtonStyle="ButtonStyle.Warning" Text="Warning" />
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    bool loading = false;
+    string msg;
+    string user;
+    string email;
+    string token;
+    string uid;
+    string nick;
+    string uploadUrl;
+    string uploadDocUrl;
+    string jwt = "Bearer ";
+
+    protected override void OnParametersSet()
+    {
+        jwt = "Bearer " + us.Token;
+        uploadUrl = Constants.ApiBase + "/api/Box/ImportBoxFromFile?s=" + Server;
+        uploadDocUrl = Constants.ApiBase + "/api/Manage/UploadDocs";
+    }
+
+    void SyncImage()
+    {
+        dialog.Open<SyncImages>("同步图片");
+    }
+
+    async Task SyncCnDb()
+    {
+        try
+        {
+            loading = true;
+            var resp = await hc.GetAsync("/api/Manage/SyncCnDb");
+            if (resp.IsSuccessStatusCode)
+            {
+                var msg = await resp.ReadAsAsync<string>();
+                notify.Notify(NotificationSeverity.Success, msg);
+            }
+            else
+            {
+                notify.Notify(NotificationSeverity.Error, $"CN数据库同步失败");
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    async Task SyncCnDbName()
+    {
+        var resp = await hc.GetAsync("/api/Manage/CheckCnUnitNames");
+        if (resp.IsSuccessStatusCode)
+        {
+            var cnt = await resp.Content.ReadFromJsonAsync<int>();
+            notify.Notify(NotificationSeverity.Success, $"完成 {cnt}");
+        }
+        else
+        {
+            notify.Notify(NotificationSeverity.Error, $"失败");
+        }
+    }
+
+    async Task SyncJpDb()
+    {
+        try
+        {
+            loading = true;
+            var resp = await hc.GetAsync("/api/Manage/SyncJpDb");
+            if (resp.IsSuccessStatusCode)
+            {
+                var msg = await resp.ReadAsAsync<string>();
+                notify.Notify(NotificationSeverity.Success, msg);
+            }
+            else
+            {
+                notify.Notify(NotificationSeverity.Error, $"JP数据库同步失败");
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    async Task GetStatistics()
+    {
+        var s = await hc.GetFromJsonAsync<Statistics>("/api/Manage/GetStatistics");
+        var sb = new System.Text.StringBuilder();
+        var props = typeof(Statistics).GetProperties();
+        foreach (var p in props)
+        {
+            var attr = p.GetCustomAttribute<System.ComponentModel.DataAnnotations.DisplayAttribute>();
+            sb.AppendLine($"{attr.Name}: {p.GetValue(s)}");
+        }
+        msg = sb.ToString();
+    }
+
+    async Task RefreshCache()
+    {
+        await dialog.OpenAsync<CacheManage>("缓存管理");
+    }
+
+    void AddUpdateLog()
+    {
+        dialog.Open<AddLog>("添加日志");
+    }
+
+    public async Task CleanTmp()
+    {
+        await hc.GetAsync("/api/Manage/CleanTmpFiles");
+    }
+
+    public async Task SyncNick()
+    {
+        var s = await hc.GetFromJsonAsync<int>("/api/Manage/SyncNickNames");
+        notify.Notify(NotificationSeverity.Success, $"更新 {s} 条");
+    }
+
+    public async Task GetToken()
+    {
+        token = await us.GeneratePasswordResetToken(user);
+    }
+
+    public async Task SetEmail()
+    {
+        var r = await us.SetUserEmail(user, email);
+        if (r.Successful)
+            notify.Notify(NotificationSeverity.Success, "设置成功");
+        else
+            notify.Notify(NotificationSeverity.Error, "设置失败", r.Error);
+    }
+
+    public async Task ClearTeams(string s)
+    {
+        var r = await hc.DeleteAsync($"/api/Teams/ClearTeams?s={s}");
+        if (r.IsSuccessStatusCode)
+        {
+            var cnt = await r.Content.ReadFromJsonAsync<int>();
+            msg = $"删除队伍{cnt}条";
+        }
+    }
+
+    public async Task ClearDocTeams()
+    {
+        var r = await hc.GetAsync($"/api/Teams/ClearDocTeams");
+        if (r.IsSuccessStatusCode)
+        {
+            notify.Notify(NotificationSeverity.Success, "作业文档已清空");
+        }
+    }
+
+    public async Task AddNick()
+    {
+        //        public async Task<string> AddNickName(int uid, string nick)
+        if (int.TryParse(uid, out _) && !nick.IsNullOrEmpty())
+        {
+            var r = await hc.GetStringAsync($"/api/Manage/AddNickName?uid={uid}&nick={nick}");
+            notify.Notify(NotificationSeverity.Success, uid, r);
+        }
+    }
+
+    public void AddDrop()
+    {
+        dialog.Open<AddDrops>("添加掉落");
+    }
+
+    public async Task RefreshAds()
+    {
+        var resp = await hc.GetAsync("/api/Manage/RefreshJdGoods");
+        if (resp.IsSuccessStatusCode)
+        {
+            var cnt = await resp.ReadAsAsync<int>();
+            notify.Notify(NotificationSeverity.Success, $"刷新商品 {cnt} 个");
+        }
+        else
+        {
+            notify.Notify(NotificationSeverity.Error, $"刷新商品失败");
+        }
+    }
+
+    void UploadComplete(UploadCompleteEventArgs args)
+    {
+        var json = args.RawResponse;
+        if (json.IsNullOrEmpty())
+        {
+            notify.Notify(NotificationSeverity.Error, "导入失败");
+            return;
+        }
+        var arr = System.Text.Json.JsonSerializer.Deserialize<List<UserBoxLine>>(json);
+        if (arr.IsNullOrEmpty())
+        {
+            notify.Notify(NotificationSeverity.Error, "导入失败");
+            return;
+        }
+        notify.Notify(NotificationSeverity.Success, $"导入Box {arr.Count} 条");
+    }
+
+    void UploadError(UploadErrorEventArgs e)
+    {
+        loading = false;
+        notify.Notify(NotificationSeverity.Error, "上传失败");
+    }
+
+    void UploadDocComplete(UploadCompleteEventArgs args)
+    {
+        var json = args.RawResponse;
+        if (json.IsNullOrEmpty())
+        {
+            notify.Notify(NotificationSeverity.Error, "上传失败");
+            return;
+        }
+        var cnt = System.Text.Json.JsonSerializer.Deserialize<int>(json);
+        notify.Notify(NotificationSeverity.Success, $"成功上传{cnt}个文件");
+    }
+
+    void UploadDocError(UploadErrorEventArgs e)
+    {
+        loading = false;
+        notify.Notify(NotificationSeverity.Error, "上传失败");
+    }
+}

@@ -1,0 +1,237 @@
+﻿@page "/recruit"
+
+@inject DialogService ds
+@inject ApiService api
+@inject NotificationService ns
+
+<RadzenCard Style="position:relative">
+    <div class="row align-items-center dashed-b-5 sticky-header">
+        @if (uid > 0)
+        {
+            if (published != null)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="编辑" Click="Edit"
+                              Style="margin-right:10px;padding:0 16px" />
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Text="删除" Click="Delete"
+                              Style="margin-right:10px;padding:0 16px" />
+            }
+            else
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="发布" Click="Publish"
+                              Style="margin-right:10px;padding:0 16px" />
+            }
+        }
+
+        <RadzenButton ButtonStyle="ButtonStyle.Info" Text="查询" Click="Query"
+                      Style="margin-right:10px;padding:0 16px" />
+    </div>
+    @if (list == null)
+    {
+        <ProgressRing />
+    }
+    else
+    {
+        <div class="row">
+            <div class="d-flex flex-wrap" style="margin:0">
+                @foreach (var cr in list)
+                {
+                    <RadzenCard Style="width:400px;margin:0 16px 16px 0;background-color:aliceblue">
+                        <div class="cr-div" style="position:relative">
+                            <h2>@cr.ClanName</h2>
+                            @if (cr.Own)
+                            {
+                                <i class="rzi" style="color:red;position:absolute;top:0;right:0">push_pin</i>
+                            }
+                            <div class="d-flex align-items-center justify-content-between" style="margin-bottom:5px">
+                                <h3>档位：<span>@cr.Rank</span></h3>
+                                <h3>招募：<span>@cr.Number 人</span></h3>
+                                <p>By @cr.UserName</p>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="cr-tag" active="@cr.Auto">Auto</div>
+                                <div class="cr-tag" active="@cr.Arrange">排刀</div>
+                                <div class="cr-tag" active="@cr.Bot">Bot</div>
+                                <div class="cr-tag" active="@cr.Report">报刀</div>
+                            </div>
+                            <hr />
+                            @if (!cr.Brief.IsNullOrEmpty())
+                            {
+                                <div class="cr-line">
+                                    <p>简介：</p>
+                                    <p>@cr.Brief</p>
+                                </div>
+                            }
+                            @if (!cr.Target.IsNullOrEmpty())
+                            {
+                                <div class="cr-line">
+                                    <p style="color:red">目标：</p>
+                                    <p>@cr.Target</p>
+                                </div>
+                            }
+                            @if (!cr.Requirement.IsNullOrEmpty())
+                            {
+                                <div class="cr-line">
+                                    <p></p>
+                                    <p><span style="color:red;opacity:0.7">要求：</span>@cr.Requirement</p>
+                                </div>
+                            }
+                            @if (!cr.Contact.IsNullOrEmpty())
+                            {
+                                <div class="cr-line">
+                                    <p>联系方式：</p>
+                                    <p>@cr.Contact</p>
+                                </div>
+                            }
+                            @if (!cr.Link.IsNullOrEmpty())
+                            {
+                                <div>
+                                    <a href="@cr.Link" target="_blank">招聘链接</a>
+                                </div>
+                            }
+                            @if (isAdmin && !cr.Own)
+                            {
+                                <i class="rzi" style="color:red;position:absolute;bottom:0;right:0;cursor:pointer" @onclick="async ()=>await Delete(cr)">delete</i>
+                            }
+                        </div>
+                    </RadzenCard>
+                }
+            </div>
+        </div>
+    }
+</RadzenCard>
+
+<style>
+    .cr-div {
+    }
+
+        .cr-div h2 {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .cr-div h3 {
+            margin-bottom: 0;
+        }
+
+            .cr-div h3 span {
+                color: red;
+            }
+
+    .cr-tag {
+        margin-right: 10px;
+        opacity: 0.1;
+    }
+
+        .cr-tag[active] {
+            color: dodgerblue;
+            opacity: 1;
+        }
+
+    .cr-line {
+        display: flex;
+        margin-bottom: 4px;
+    }
+
+        .cr-line p {
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 256px;
+            overflow-y: auto;
+        }
+
+            .cr-line p:first-child {
+                opacity: 0.7;
+            }
+</style>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<ClanRecruitment> list;
+    int uid;
+    ClanRecruitment published = null;
+    bool isAdmin = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var user = await authenticationStateTask;
+        uid = user.User.GetUserId();
+        isAdmin = user.User.IsInRole("Admin");
+
+        list = await api.GetClanRecruitments(Server);
+        if (list.Any() && list[0].UserId == uid)
+        {
+            published = list[0];
+            published.Own = true;
+        }
+    }
+
+    async Task Publish()
+    {
+        var p = await ds.OpenAsync<EditRecruitment>("发布招募", new Dictionary<string, object>
+        {
+            ["Recruitment"] = new ClanRecruitment { Server = Server }
+        });
+        if (p is ClanRecruitment r)
+        {
+            r.Own = true;
+            published = r;
+            list.Insert(0, published);
+        }
+    }
+
+    async Task Edit()
+    {
+        var p = await ds.OpenAsync<EditRecruitment>("编辑招募", new Dictionary<string, object>
+        {
+            ["Recruitment"] = published.JsonCopy()
+        });
+        if (p is ClanRecruitment r)
+        {
+            r.Own = true;
+            published = r;
+            list[0] = r;
+        }
+    }
+
+    async Task Delete()
+    {
+        var r = await ds.OpenConfirmAsync("确认删除？", $"删除公会“{published.ClanName}”的招募信息");
+        if (r)
+        {
+            r = await api.DeleteClanRecruitment(published.Id);
+            if (r)
+            {
+                list.Remove(published);
+                published = null;
+                ns.Notify(NotificationSeverity.Success, "删除成功");
+            }
+            else
+                ns.Notify(NotificationSeverity.Error, "删除失败");
+        }
+    }
+
+    async Task Delete(ClanRecruitment cr)
+    {
+        var r = await ds.OpenConfirmAsync("确认删除？", $"删除公会“{cr.ClanName}”的招募信息");
+        if (r)
+        {
+            r = await api.DeleteClanRecruitment(cr.Id);
+            if (r)
+            {
+                list.Remove(cr);
+                ns.Notify(NotificationSeverity.Success, "删除成功");
+            }
+            else
+                ns.Notify(NotificationSeverity.Error, "删除失败");
+        }
+    }
+
+    async Task Query()
+    {
+        await OnParametersSetAsync();
+    }
+}

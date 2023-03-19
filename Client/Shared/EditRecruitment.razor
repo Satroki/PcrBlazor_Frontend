@@ -1,0 +1,127 @@
+﻿@inject DialogService ds
+@inject ApiService api
+
+<RadzenTemplateForm Submit="@Save" TItem="ClanRecruitment" InvalidSubmit="OnInvalidSubmit" Data="@Recruitment">
+    <div>
+        <div class="d-flex align-items-center">
+            <div class="f-20">
+                <RadzenLabel Text="公会名" />
+            </div>
+            <div class="f-80">
+                <RadzenTextBox input-block Name="ClanName" @bind-Value="Recruitment.ClanName" />
+                <RadzenRequiredValidator Component="ClanName" Text="请填写公会名" />
+            </div>
+        </div>
+        <br />
+        <div class="d-flex align-items-center">
+            <div class="f-20 ">
+                <RadzenLabel Text="档位" />
+            </div>
+            <div class="f-20">
+                <RadzenNumeric input-block Name="Rank" @bind-Value="Recruitment.Rank" Min="1" />
+                <RadzenRequiredValidator Component="Rank" Text="请填写当前档位" />
+            </div>
+            <div class="f-20"></div>
+            <div class="f-20 ">
+                <RadzenLabel Text="招募人数" />
+            </div>
+            <div class="f-20">
+                <RadzenNumeric input-block Name="Number" @bind-Value="Recruitment.Number" Min="1" />
+                <RadzenRequiredValidator Component="Number" Text="请填写招募人数" />
+            </div>
+        </div>
+        <br />
+        <div class="d-flex align-items-center justify-content-end">
+            <RadzenCheckBox @bind-Value="Recruitment.Auto" />
+            <RadzenLabel Text="Auto" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="Recruitment.Arrange" />
+            <RadzenLabel Text="排刀" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="Recruitment.Bot" />
+            <RadzenLabel Text="Bot" Style="margin:0 10px 0 5px" />
+            <RadzenCheckBox @bind-Value="Recruitment.Report" />
+            <RadzenLabel Text="报刀" Style="margin:0 10px 0 5px" />
+        </div>
+        <br />
+        <div class="d-flex align-items-center">
+            <div class="f-20">
+                <RadzenLabel Text="简介" />
+            </div>
+            <div class="f-80">
+                <RadzenTextBox input-block @bind-Value="Recruitment.Brief" />
+            </div>
+        </div>
+        <br />
+        <div class="d-flex align-items-center">
+            <div class="f-20">
+                <RadzenLabel Text="目标" />
+            </div>
+            <div class="f-80">
+                <RadzenTextBox input-block @bind-Value="Recruitment.Target" />
+            </div>
+        </div>
+        <br />
+        <div class="d-flex align-items-center">
+            <div class="f-20">
+                <RadzenLabel Text="要求" />
+            </div>
+            <div class="f-80">
+                <RadzenTextArea Rows="5" input-block @bind-Value="Recruitment.Requirement" />
+            </div>
+        </div>
+        <br />
+        <div class="d-flex align-items-center">
+            <div class="f-20">
+                <RadzenLabel Text="联系方式" />
+            </div>
+            <div class="f-80">
+                <RadzenTextBox Rows="5" input-block @bind-Value="Recruitment.Contact" />
+            </div>
+        </div>
+        <br />
+        <div class="d-flex align-items-center">
+            <div class="f-20">
+                <RadzenLabel Text="外部链接"/>
+            </div>
+            <div class="f-80">
+                <RadzenTextBox input-block @bind-Value="Recruitment.Link" Name="Link"/>
+                <RadzenRegexValidator Component="Link" Pattern="@httpp" Text="请输入正确的链接" />
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center flex-column">
+        <div class="d-flex align-items-end justify-content-center" style="margin-top: 20px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" ButtonType="ButtonType.Submit" Text="保存" Style="margin-right:10px;padding:0 16px" Disabled="loading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="取消"
+                          Click="@Cancel" Style="padding: 0 16px" Disabled="loading" />
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+
+@code {
+    [Parameter]
+    public ClanRecruitment Recruitment { get; set; }
+
+    bool loading;
+    string httpp = @"^https?://([\w-]+\.)+[\w-]+(/[\w-./?%&=]*)?$";
+
+    async Task Save()
+    {
+        var r = await api.AddOrUpdateClanRecruitment(Recruitment);
+        if (r != null)
+        {
+            ds.Close(r);
+        }
+    }
+
+    void Cancel()
+    {
+        ds.Close(null);
+    }
+
+    void OnInvalidSubmit()
+    {
+
+    }
+}

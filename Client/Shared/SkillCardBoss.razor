@@ -1,0 +1,20 @@
+﻿@if (Skill != null)
+{
+    <div class="skill-card">
+        <div class="skill-header" style="margin:0">@SkillType <span style="margin-left:10px" hidden="@(Skill.SkillLevel==0)">等级：@Skill.SkillLevel</span><span style="margin-left:10px" hidden="@(Skill.CastTime==0)">待机：@Skill.CastTime s</span><span style="margin-left:10px" hidden="@(Skill.UbCoolTime==0)">冷却：@Skill.UbCoolTime s</span></div>
+        <div style="margin-top:5px;padding:0 5px">
+            @for (int i = 0; i < Skill.Actions.Count; i++)
+            {
+                <p style="margin-bottom:5px">@($"{i+1}. {Skill.Actions[i].Description}")</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public SkillModel Skill { get; set; }
+
+    [Parameter]
+    public string SkillType { get; set; }
+}

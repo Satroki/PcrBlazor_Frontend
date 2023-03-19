@@ -1,0 +1,194 @@
+﻿@inject DialogService ds
+@inject NotificationService ns
+@inject UserService us
+
+<div>
+    <RadzenTemplateForm @ref="form" TItem="AccountModel" Data=@model Submit=@OnSubmit>
+        @if (Mode == LoginPageMode.ResetPwd)
+        {
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="用户名" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenTextBox Name="UserName" @bind-Value="model.UserName" input-block />
+                    <RadzenRequiredValidator Component="UserName" Text="请输入用户名" Style="position: absolute;z-index:10" />
+                </div>
+            </div>
+        }
+        @if (Mode == LoginPageMode.ChangeNickName)
+        {
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="昵称" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenTextBox Name="NickName" @bind-Value="model.NickName" input-block />
+                    <RadzenRequiredValidator Component="NickName" Text="请输入昵称" Style="position: absolute;z-index:10" />
+                </div>
+            </div>
+        }
+        @if (Mode == LoginPageMode.ResetPwd || Mode == LoginPageMode.ChangeEmail)
+        {
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="邮箱" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenTextBox Name="Email" @bind-Value="model.Email" input-block />
+                    <RadzenEmailValidator Component="Email" Text="请输入正确的邮箱" Style="position:absolute;z-index:11" />
+                </div>
+            </div>
+        }
+        @if (Mode == LoginPageMode.ChangePwd || Mode == LoginPageMode.ChangeEmail)
+        {
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="密码" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenPassword Name="Password" @bind-Value="model.Password" input-block />
+                    <RadzenRequiredValidator Component="Password" Text="请输入密码" Style="position: absolute;z-index:12" />
+                </div>
+            </div>
+        }
+        @if (Mode == LoginPageMode.ChangePwd || Mode == LoginPageMode.ResetPwd)
+        {
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="新密码" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenPassword Name="NewPassword" @bind-Value="model.NewPassword" input-block />
+                    <RadzenRequiredValidator Component="NewPassword" Text="请输入新密码" Style="position: absolute;z-index:13" />
+                </div>
+            </div>
+        }
+        @if (Mode == LoginPageMode.ResetPwd)
+        {
+            <div class="row align-items-center mb-3">
+                <div class="col-3 align-items-center">
+                    <RadzenLabel Text="令牌" /><span class="red">*</span>
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="获取" Style="padding:0 10px;margin-left:10px" Click="GetToken"
+                                  Disabled="@(loading1 || model.UserName.IsNullOrEmpty() || model.Email.IsNullOrEmpty())" />
+                </div>
+                <div class="col-9">
+                    <RadzenTextArea Name="Token" @bind-Value="model.Password" input-block Rows="3" />
+                    <RadzenRequiredValidator Component="Token" Text="请输入令牌" Style="position: absolute;z-index:13" />
+                </div>
+            </div>
+        }
+        <div class="row d-f-c" style="margin-top:10px">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="@submitText" ButtonType="ButtonType.Submit" Style="margin-right:20px" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="取消" Click="ds.Close" />
+        </div>
+    </RadzenTemplateForm>
+</div>
+
+
+@code {
+    [Parameter]
+    public LoginPageMode Mode { get; set; }
+
+    AccountModel model = new AccountModel();
+    string submitText;
+    RadzenTemplateForm<AccountModel> form;
+
+    bool loading;
+    bool loading1;
+
+    protected override void OnParametersSet()
+    {
+        submitText = Mode switch
+        {
+            LoginPageMode.ResetPwd => "重置密码",
+            LoginPageMode.ChangePwd => "修改密码",
+            LoginPageMode.ChangeEmail => "修改邮箱",
+            LoginPageMode.ChangeNickName => "修改昵称",
+            _ => "提交"
+        };
+    }
+
+    async Task OnSubmit()
+    {
+        try
+        {
+            loading = true;
+            switch (Mode)
+            {
+                case LoginPageMode.ResetPwd:
+                    {
+                        var r = await us.ResetPasswordByEmail(model.UserName, model.Password, model.NewPassword);
+                        if (r.Successful)
+                        {
+                            ns.Notify(NotificationSeverity.Success, "重置成功");
+                            ds.Close();
+                        }
+                        else
+                            ns.Notify(NotificationSeverity.Error, "重置失败", r.Error);
+                    }
+                    break;
+                case LoginPageMode.ChangePwd:
+                    {
+                        var r = await us.ChangePassword(model.Password, model.NewPassword);
+                        if (r.Successful)
+                        {
+                            ns.Notify(NotificationSeverity.Success, "修改成功");
+                            ds.Close();
+                        }
+                        else
+                            ns.Notify(NotificationSeverity.Error, "修改失败", r.Error);
+                    }
+                    break;
+                case LoginPageMode.ChangeEmail:
+                    {
+                        var r = await us.ChangeEmail(model.Email, model.Password);
+                        if (r.Successful)
+                        {
+                            ns.Notify(NotificationSeverity.Success, "修改成功");
+                            ds.Close(model.Email);
+                        }
+                        else
+                            ns.Notify(NotificationSeverity.Error, "修改失败", r.Error);
+                    }
+                    break;
+                case LoginPageMode.ChangeNickName:
+                    {
+                        var r = await us.UpdateUserInfo(model.NickName);
+                        if (r.Successful)
+                        {
+                            ns.Notify(NotificationSeverity.Success, "修改成功");
+                            ds.Close(model.NickName);
+                        }
+                        else
+                            ns.Notify(NotificationSeverity.Error, "修改失败", r.Error);
+                    }
+                    break;
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    async Task GetToken()
+    {
+        if (!model.UserName.IsNullOrEmpty() && !model.Email.IsNullOrEmpty())
+        {
+            try
+            {
+                loading1 = true;
+                var r = await us.GetResetPasswordToken(model.UserName, model.Email);
+                if (r.Successful)
+                    ns.Notify(NotificationSeverity.Success, "邮件已发送");
+                else
+                    ns.Notify(NotificationSeverity.Error, "获取失败", r.Error);
+            }
+            finally
+            {
+                loading1 = false;
+            }
+        }
+    }
+}

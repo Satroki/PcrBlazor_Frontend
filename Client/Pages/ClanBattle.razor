@@ -1,0 +1,226 @@
+﻿@page "/clanbattle"
+@inject ApiService api
+
+@if (infos == null)
+{
+    <ProgressRing />
+}
+else
+{
+    <div class="d-flex">
+        <div>
+            <RadzenListBox Data="infos" TValue="ClanBattleInfo" @bind-Value="info" Change="InfoChange" Style="max-height:calc(100vh - 86px)">
+                <Template Context="c">
+                    @{ var cbi = (ClanBattleInfo)c;}
+                    <div style="background-color:transparent">@($"{cbi.Year}年{cbi.Month:d2}月 {cbi.Title}") <span hidden="@cbi.Started">（暂定）</span></div>
+                </Template>
+            </RadzenListBox>
+        </div>
+        <div class="f-1" style="margin-left:10px">
+            @if (info != null)
+            {
+                <RadzenTabs @ref="tabs" @bind-SelectedIndex="tabIndex">
+                    <Tabs>
+                        @foreach (var p in info.Phases)
+                        {
+                            <RadzenTabsItem Text="@GetLapDesp(p)">
+                                <ChildContent>
+                                    <div style="max-height:calc(100vh - 167px);overflow-y:auto">
+                                        @foreach (var boss in p.Bosses)
+                                        {
+                                            <RadzenFieldset Text="@($"{boss.Name}  × {boss.ScoreCoefficient}")">
+                                                <div class="d-flex align-items-start">
+                                                    <img src="@boss.UnitId.GetUnitIcon()" />
+                                                    <div class="d-flex flex-row flex-wrap" style="max-width:400px;min-width:400px; margin:-5px 0 0 5px">
+                                                        @foreach (var (k, v) in boss.GetStatus())
+                                                        {
+                                                            if (v > 0)
+                                                            {
+                                                                <div class="d-flex align-items-center justify-content-end status-div" style="flex:1 0 50%">
+                                                                    <p class="status-name">@k</p>
+                                                                    <p class="status-value">@v.ToString("n0")</p>
+                                                                </div>
+                                                            }
+                                                        }
+                                                        @if (!boss.Parts.IsNullOrEmpty())
+                                                        {
+                                                            foreach (var part in boss.Parts)
+                                                            {
+                                                                <div class="d-flex flex-row flex-wrap boss-part-div">
+                                                                    <p class="boss-part-p">@part.Name</p>
+                                                                    @foreach (var (k, v) in part.GetStatus())
+                                                                    {
+                                                                        if (v > 0)
+                                                                        {
+                                                                            <div class="d-flex align-items-center justify-content-end status-div">
+                                                                                <p class="status-name">@k</p>
+                                                                                <p class="status-value">@v.ToString("n0")</p>
+                                                                            </div>
+                                                                        }
+                                                                    }
+                                                                </div>
+
+                                                            }
+                                                        }
+                                                    </div>
+                                                    <div class="boss-comment">@boss.Comment</div>
+                                                </div>
+                                                <RadzenPanel AllowCollapse="true" Style="padding-left:0;padding-right:0" Collapsed="@(!boss.ShowInfo)"
+                                                             Expand="async _=>await GetBossInfo(boss)" Collapse="_=>boss.ShowInfo=false">
+                                                    <HeaderTemplate>
+                                                        <div class="panel-header">详细信息</div>
+                                                    </HeaderTemplate>
+                                                    <ChildContent>
+                                                        @if (boss.UnitSkillModel != null)
+                                                        {
+                                                            <div>
+                                                                <AttackPatternCard Boss="boss" />
+                                                                <div style="margin-top:10px">
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.UnionBurst" SkillType="UB" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main1" SkillType="Main 1" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main2" SkillType="Main 2" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main3" SkillType="Main 3" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main4" SkillType="Main 4" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main5" SkillType="Main 5" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main6" SkillType="Main 6" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main7" SkillType="Main 7" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main8" SkillType="Main 8" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main9" SkillType="Main 9" />
+                                                                    <SkillCardBoss Skill="@boss.UnitSkillModel.Main10" SkillType="Main 10" />
+                                                                </div>
+                                                                @if (!boss.AilmentsResist.IsNullOrEmpty())
+                                                                {
+                                                                    <div class="d-flex boss-resists">
+                                                                        @foreach (var ar in boss.AilmentsResist)
+                                                                        {
+                                                                            <div class="d-flex boss-resist" less="@(ar.Resist<100)">
+                                                                                <p>@ar.AilmentName</p>
+                                                                                <p class="boss-resist-v">@ar.Resist%</p>
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <ProgressRing />
+                                                        }
+                                                    </ChildContent>
+                                                </RadzenPanel>
+                                            </RadzenFieldset>
+                                        }
+                                    </div>
+                                </ChildContent>
+                            </RadzenTabsItem>
+                        }
+                    </Tabs>
+                </RadzenTabs>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .boss-part-div {
+    }
+
+        .boss-part-div .status-div {
+            flex: 1 0 50%;
+        }
+
+            .boss-part-div .status-div:first-of-type {
+                flex: 100%;
+            }
+
+    .boss-part-p {
+        flex: 100%;
+        color: #88989b;
+        font-size: 0.875rem;
+        margin: 10px 0 0 5px !important;
+    }
+
+    .boss-comment {
+        border-left: 1px dashed #5a96ee;
+        white-space: pre-line;
+        margin-left: 5px;
+        padding-left: 5px;
+        align-self: stretch;
+    }
+
+    .boss-resists {
+        flex-wrap: wrap;
+        padding: 3px;
+        background-color: #e8e8e8;
+        border-radius: 5px;
+    }
+
+    .boss-resist {
+        margin: 2px;
+        border: 1px solid #b5b5b5;
+        border-radius: 5px;
+        align-items: center;
+        padding: 2px 5px;
+    }
+
+        .boss-resist p {
+            margin-bottom: 0;
+        }
+
+        .boss-resist[less] {
+            color: red;
+        }
+
+    .boss-resist-v {
+        margin-left: 10px;
+    }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<ClanBattleInfo> infos;
+    ClanBattleInfo info;
+    RadzenTabs tabs;
+    int tabIndex = 0;
+    protected override async Task OnParametersSetAsync()
+    {
+        infos = null;
+        info = null;
+        var i = await api.GetClanBattleInfos(Server);
+        infos = i.OrderByDescending(c => c.ClanBattleId).ToList();
+        info = infos.First(i => i.Started);
+    }
+
+    string GetLapDesp(ClanBattlePhase p)
+    {
+        if (p.LapTo < 0)
+            return $"{p.LapFrom} 周目以后";
+        if (p.LapFrom == p.LapTo)
+            return $"{p.LapFrom} 周目";
+        return $"{p.LapFrom} - {p.LapTo} 周目";
+    }
+
+    async Task InfoChange(object i)
+    {
+        if (tabIndex > info.Phases.Count - 1)
+            tabIndex = info.Phases.Count - 1;
+        await Task.Delay(100);
+        StateHasChanged();
+    }
+
+    async Task GetBossInfo(ClanBattleBoss boss)
+    {
+        boss.ShowInfo = true;
+        if (boss.UnitSkillModel == null)
+        {
+            var b = await api.GetClanBattleBossInfo(boss.EnemyId, Server);
+            if (b == null)
+                return;
+            boss.AttackPatterns = b.AttackPatterns;
+            boss.UnitSkillModel = b.UnitSkillModel;
+            boss.AilmentsResist = b.AilmentsResist;
+        }
+    }
+}

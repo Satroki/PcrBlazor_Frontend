@@ -1,0 +1,76 @@
+﻿@inject DialogService dialog
+@inject ILocalStorageService storage
+
+<div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap">
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowSorter" TValue="bool" Name="ShowSorter" />
+            <RadzenLabel Text="排序" Component="ShowSorter" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowStatusSorter" TValue="bool" Name="ShowStatusSorter" />
+            <RadzenLabel Text="属性排序" Component="ShowStatusSorter" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowTrace" TValue="bool" Name="ShowTrace" />
+            <RadzenLabel Text="常用" Component="ShowTrace" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowPriority" TValue="bool" Name="ShowPriority" />
+            <RadzenLabel Text="优先级" Component="ShowPriority" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowPos" TValue="bool" Name="ShowPos" />
+            <RadzenLabel Text="位置" Component="ShowPos" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowUnique" TValue="bool" Name="ShowUnique" />
+            <RadzenLabel Text="专武" Component="ShowUnique" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowR6" TValue="bool" Name="ShowR6" />
+            <RadzenLabel Text="6星" Component="ShowR6" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowFin" TValue="bool" Name="ShowFin" />
+            <RadzenLabel Text="状态" Component="ShowFin" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowSearch" TValue="bool" Name="ShowSearch" />
+            <RadzenLabel Text="名称" Component="ShowSearch" Style="margin-left: 5px;" />
+        </div>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="保存"
+                          Click="Ok" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+        </div>
+    </div>
+</div>
+
+<style>
+    .div-cb-group {
+        margin-left: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+    }
+</style>
+@code {
+    [Parameter]
+    public LineFilterRecord FilterRecord { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    async Task Ok()
+    {
+        await storage.SaveFilterRecord(FilterRecord, Server);
+        dialog.Close(true);
+    }
+
+    void Cancel()
+    {
+        dialog.Close();
+    }
+}

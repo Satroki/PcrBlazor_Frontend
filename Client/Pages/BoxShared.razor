@@ -1,0 +1,93 @@
+﻿@page "/box/{ShareId}/{Ser}"
+@inject ApiService api
+@inject ILocalStorageService storage
+@inject NavigationManager nav
+@inject DialogService dialog
+
+<RadzenCard>
+    <div class="d-flex">
+        <h3>@(user)的Box</h3>
+    </div>
+    <div class="row box-btns">
+        <BoxFilter FilterRecord="fr" FilterChanged="@FilterChanged" />
+        <AuthorizeView>
+            <Authorized>
+                <div class="f-1" style="text-align:right">
+                    <RadzenButton ButtonStyle="ButtonStyle.Success" Text="收藏" Icon="favorite_border" Click="@AddFavorite" />
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+    <div class="row box-div">
+        @if (box != null)
+        {
+            foreach (var l in box)
+            {
+                <BoxUnit Line="l" AllowEdit="false"></BoxUnit>
+            }
+        }
+    </div>
+</RadzenCard>
+
+
+@code{
+    IEnumerable<UserBoxLine> box;
+    IEnumerable<UserBoxLine> originBox;
+    [Parameter]
+    public string ShareId { get; set; }
+    [Parameter]
+    public string Ser { get; set; }
+
+    string user;
+
+    LineFilterRecord fr = new LineFilterRecord();
+
+    protected override void OnInitialized()
+    {
+        var uri = nav.ToAbsoluteUri(nav.Uri);
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("u", out var v))
+        {
+            user = v.ToString();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await api.InitSettings();
+        await api.GetEquipmentStatusSetAsync();
+        await GetBox(true);
+    }
+
+    async Task GetOriginBox(bool refresh = false)
+    {
+        if (originBox == null || refresh)
+        {
+            originBox = await api.GetSharedBox(ShareId, Ser);
+        }
+    }
+
+    async Task GetBox(bool refresh = false)
+    {
+        await GetOriginBox(refresh);
+        if (originBox == null)
+            return;
+        box = fr.SetFiltersAndOrder(originBox);
+    }
+
+    async void BoxChanged()
+    {
+        await GetBox();
+        StateHasChanged();
+    }
+
+    void FilterChanged()
+    {
+        BoxChanged();
+    }
+
+
+    async Task AddFavorite()
+    {
+        var ff = await dialog.OpenAsync<AddFavorite>("添加收藏", new Dictionary<string, object> { ["Link"] = nav.Uri });
+    }
+}

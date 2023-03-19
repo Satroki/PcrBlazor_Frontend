@@ -1,0 +1,175 @@
+﻿@inject DialogService ds
+
+<div class="d-flex">
+    <div style="width:400px;padding-right:15px;border-right:1px solid #dadfe2">
+        <RadzenTemplateForm TItem="AccountModel" Data=@Model Submit=@OnSubmit>
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="用户名" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenTextBox Name="UserName" @bind-Value="Model.UserName" input-block />
+                    <RadzenRequiredValidator Component="UserName" Text="请输入用户名" Style="position: absolute;z-index:10" />
+                </div>
+            </div>
+            @if (mode == LoginPageMode.Register)
+            {
+                <div class="row align-items-center mb-3">
+                    <div class="col-3">
+                        <RadzenLabel Text="昵称" />
+                    </div>
+                    <div class="col-9">
+                        <RadzenTextBox Name="UserName" @bind-Value="Model.NickName" input-block />
+                    </div>
+                </div>
+                <div class="row align-items-center mb-3">
+                    <div class="col-3">
+                        <RadzenLabel Text="邮箱" />
+                    </div>
+                    <div class="col-9">
+                        <RadzenTextBox Name="Email" @bind-Value="Model.Email" input-block />
+                        <RadzenEmailValidator Component="Email" Text="请输入正确的邮箱" Style="position:absolute;z-index:11" />
+                    </div>
+                </div>
+            }
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="密码" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenPassword Name="Password" @bind-Value="Model.Password" input-block />
+                    <RadzenRequiredValidator Component="Password" Text="请输入密码" Style="position: absolute;z-index:12" />
+                </div>
+            </div>
+            <div class="row align-items-center mb-3">
+                <div class="col-4 offset-3">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="@loginText" ButtonType="ButtonType.Submit" />
+                </div>
+                <div class="col-5" style="text-align:right" hidden="@(mode != LoginPageMode.Login)">
+                    <a href="javascript:void(0)" @onclick="ResetPassword">忘记密码？</a>
+                </div>
+            </div>
+        </RadzenTemplateForm>
+        <div class="row justify-content-end">
+            <div class="d-f-c" style="padding:0 15px">
+                <RadzenLabel Text="@registerMessageText" Style="margin-right:20px" />
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="@registerText" Click="SwitchMode" />
+            </div>
+        </div>
+    </div>
+    <div style="margin-left:15px;max-width:400px">
+        <RadzenLabel Text="第三方登录：" Style="font-size:1rem;margin-bottom:10px" />
+        <div class="d-flex flex-wrap">
+            <a href="/openid/qq?returnUrl=@ReturnUrl" class="connect-a">
+                <img src="/connect_qq.png" />
+            </a>
+            <a href="/openid/microsoft?returnUrl=@ReturnUrl" class="connect-a">
+                <div class="connect-ms">
+                    <div class="connect-img">
+                        <img src="/connect_microsoft.png" />
+                    </div>
+                    <p>Microsoft</p>
+                </div>
+            </a>
+            <a href="/openid/github?returnUrl=@ReturnUrl" class="connect-a">
+                <div class="connect-ms">
+                    <div class="connect-img">
+                        <img src="/connect_github.png" />
+                    </div>
+                    <p>GitHub</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .connect-a {
+        margin-right: 15px;
+        margin-bottom: 15px;
+    }
+
+        .connect-a:hover {
+            text-decoration: none;
+        }
+
+    .connect-img {
+        width: 32px;
+        height: 32px;
+        background-color: white;
+        border: 1px solid gray;
+        box-sizing: border-box;
+    }
+
+    .connect-ms {
+        width: 170px;
+        height: 32px;
+        border-radius: 2px;
+        background-color: gray;
+        display: flex;
+        align-items: center;
+    }
+
+        .connect-ms svg {
+            margin: 0 2px;
+        }
+
+        .connect-ms img {
+            margin: 1px;
+            width: 28px;
+            height: 28px;
+        }
+
+        .connect-ms p {
+            margin: 0;
+            text-align: center;
+            font-size: 1.4rem;
+            color: white;
+            flex: 1;
+        }
+</style>
+
+@code {
+    [Parameter]
+    public AccountModel Model { get; set; }
+    [Parameter]
+    public string ReturnUrl { get; set; }
+    [Parameter]
+    public EventCallback<LoginPageMode> Submit { get; set; }
+
+    LoginPageMode mode = LoginPageMode.Login;
+    string loginText = "登录";
+    string registerText = "注册";
+    string registerMessageText = "没有账号？注册新用户";
+
+    public void SwitchMode()
+    {
+        if (mode == LoginPageMode.Login)
+        {
+            mode = LoginPageMode.Register;
+            loginText = "注册";
+            registerText = "登录";
+            registerMessageText = "登录已有账号";
+        }
+        else
+        {
+            mode = LoginPageMode.Login;
+            loginText = "登录";
+            registerText = "注册";
+            registerMessageText = "没有账号？注册新用户";
+        }
+    }
+
+    async Task OnSubmit()
+    {
+        await Submit.InvokeAsync(mode);
+    }
+
+    async Task ResetPassword()
+    {
+        await ds.OpenAsync<LoginSetting>("重置密码", new Dictionary<string, object>
+        {
+            ["Mode"] = LoginPageMode.ResetPwd
+        });
+    }
+}

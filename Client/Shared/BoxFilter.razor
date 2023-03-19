@@ -1,0 +1,128 @@
+﻿@inject DialogService ds
+<div class="d-flex align-items-center">
+    @*@if (FilterRecord.ShowPriority)
+    {
+    <RadzenNumeric Placeholder="优先" TextProperty="Key" TValue="int?"
+    Change="@FilterChanged" @bind-Value="FilterRecord.Priority"
+    Style="width:55px" />
+    <p style="margin:0 3px">-</p>
+    <RadzenNumeric Placeholder="" TextProperty="Key" TValue="int?"
+    Change="@FilterChanged" @bind-Value="FilterRecord.PriorityTo"
+    Style="width:55px" />
+    }*@
+    @if (!FilterRecord.Groups.IsNullOrEmpty())
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="true" Placeholder="分组" TextProperty="Name" ValueProperty="Id"
+                    Change="GroupChanged" Data=@FilterRecord.FilterGroups @bind-Value=@groupIds
+                    Style="width:110px" />
+    }
+    @if (FilterRecord.ShowSorter)
+    {
+        <RadzenDropDown AllowClear="false" AllowFiltering="false" Multiple="false" Placeholder="排序" TextProperty="Key" ValueProperty="Key" TValue="string"
+                    Change="OrderChanged" Data="@FilterRecord.Sorters" @bind-Value="orderKey"
+                    Style="width:110px" />
+    }
+    @if (FilterRecord.ShowStatusSorter)
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="属性排序" TextProperty="Value" ValueProperty="Key" TValue="string"
+                    Change="StatusKeyChanged" Data="@UnitStatus.Names" @bind-Value="statusKey"
+                    Style="width:120px" />
+    }
+    @if (FilterRecord.ShowTrace)
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="常用" TextProperty="Key" ValueProperty="Key" TValue="string"
+                    Change="@FilterChanged" Data="@FilterRecord.TraceFilters" @bind-Value="FilterRecord.TraceKey"
+                    Style="width:95px" />
+    }
+    @if (FilterRecord.ShowPriority)
+    {
+        <RadzenNumeric Placeholder="优先级" TextProperty="Key" TValue="int?"
+                   Change="@FilterChanged" @bind-Value="FilterRecord.Priority"
+                   Style="width:95px" />
+    }
+    @if (FilterRecord.ShowPos)
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="位置" TextProperty="Key" ValueProperty="Value" TValue="UnitPosition?"
+                    Change="@FilterChanged" Data="@FilterRecord.PositionDict" @bind-Value="FilterRecord.Position"
+                    Style="width:95px" />
+    }
+    @if (FilterRecord.ShowUnique)
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="专武" TextProperty="Key" ValueProperty="Value" TValue="bool?"
+                    Change="@FilterChanged" Data="@FilterRecord.UniqueDict" @bind-Value="FilterRecord.FilterUnique"
+                    Style="width:95px">
+        </RadzenDropDown>
+    }
+    @if (FilterRecord.ShowR6)
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="6星" TextProperty="Key" ValueProperty="Value" TValue="bool?"
+                    Change="@FilterChanged" Data="@FilterRecord.R6Dict" @bind-Value="FilterRecord.FilterRarity6"
+                    Style="width:95px" />
+    }
+    @if (FilterRecord.ShowFin)
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="状态" TextProperty="Key" ValueProperty="Key" TValue="string"
+                    Change="@FilterChanged" Data="@FilterRecord.FinFilters" @bind-Value="FilterRecord.FinKey"
+                    Style="width:140px" />
+    }
+    @if (FilterRecord.ShowSearch)
+    {
+        <RadzenTextBox Placeholder="搜索..." @bind-Value="@FilterRecord.Name" Change="FilterChanged"
+                   Style="width:100px;" />
+    }
+    <RadzenIcon Icon="settings" @onclick="ShowSettings" Style="cursor:pointer;align-self:center;margin-left:5px" />
+</div>
+
+@code {
+    [Parameter]
+    public LineFilterRecord FilterRecord { get; set; }
+
+    [Parameter]
+    public EventCallback FilterChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<string> StatusSorterChanged { get; set; }
+
+    string orderKey;
+    string statusKey;
+
+    IEnumerable<int> groupIds;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        groupIds = FilterRecord?.GroupIds;
+    }
+
+    async Task GroupChanged(object obj)
+    {
+        if (obj is IEnumerable<int> arr)
+        {
+            FilterRecord.GroupIds = arr.ToList();
+        }
+        else
+        {
+            FilterRecord.GroupIds = null;
+        }
+        await FilterChanged.InvokeAsync();
+    }
+
+    async Task OrderChanged()
+    {
+        FilterRecord.OnOrderKeyChanged(orderKey);
+        await FilterChanged.InvokeAsync(orderKey);
+    }
+
+    async Task ShowSettings()
+    {
+        await ds.OpenAsync<BoxFilterSettings>("筛选设置", new Dictionary<string, object>
+            {
+                ["FilterRecord"] = FilterRecord
+            }, new() { Width = "400px" });
+    }
+
+    async Task StatusKeyChanged()
+    {
+        await StatusSorterChanged.InvokeAsync(statusKey);
+    }
+}

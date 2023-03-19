@@ -1,0 +1,104 @@
+﻿@inject ApiService api
+@inject HttpClient hc
+@inject NotificationService ns
+
+<div>
+    <div class="d-flex align-items-center" style="margin-bottom:10px">
+        <RadzenLabel Text="区域: " />
+        <RadzenNumeric @bind-Value="area" Min="37" />
+    </div>
+    <RadzenTextArea Rows="7" @bind-Value="names" Style="width:100%;height:100%"
+                    Placeholder="道具名称/Url">
+
+    </RadzenTextArea>
+</div>
+<div>
+    @msg
+</div>
+<div class="d-flex align-items-center" style="margin-top:10px">
+    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="添加"
+                  Click="@Add" Style="margin-left: 10px" />
+</div>
+
+
+@code {
+    string names;
+    int area = 37;
+    string msg;
+    List<EquipmentData> datas;
+    HashSet<int> idSet;
+
+    protected override async Task OnInitializedAsync()
+    {
+        datas = await api.GetEquipmentDatasAsync("jp");
+        idSet = datas.Select(d => d.EquipmentId).ToHashSet();
+    }
+
+    public async Task Add()
+    {
+        if (names.StartsWith("http"))
+        {
+            var urlm = Regex.Match(names, @"NORMAL/(\d{2})\.");
+            var a = urlm.Groups[1].Value.AsInt();
+            var d = new AreaDrop()
+                {
+                    Area = a,
+                    Url = names
+                };
+            var resp = await hc.PostAsJsonAsync("api/Quest/AddAreaExtraDropsByUrl", d);
+            var cnt = await resp.ReadAsAsync<int>();
+            ns.Notify(NotificationSeverity.Success, $"添加成功 {cnt}");
+        }
+        else
+        {
+            await AddByNames();
+        }
+    }
+
+    public async Task AddByNames()
+    {
+        var equips = names?.Split(new[] { ' ', ',', '\t', '\n', '\r', '，', ';', '；' }, StringSplitOptions.RemoveEmptyEntries);
+        if (equips.IsNullOrEmpty())
+            return;
+        if (area < 37)
+            return;
+        var ids = new List<int>();
+        foreach (var name in equips)
+        {
+            var eq = datas.FirstOrDefault(e => e.EquipmentName == name);
+            if (eq == null)
+            {
+                msg = $"{name} 无法识别";
+                break;
+            }
+            else
+            {
+                var id = eq.EquipmentId + 10000;
+                if (idSet.Contains(id))
+                {
+                    ids.Add(id);
+                    continue;
+                }
+                id = eq.EquipmentId + 20000;
+                if (idSet.Contains(id))
+                {
+                    ids.Add(id);
+                    continue;
+                }
+                msg = $"{name} 无对应材料";
+                break;
+            }
+        }
+
+        if (ids.Count != equips.Length)
+            return;
+        var d = new AreaDrop()
+        {
+            Area = area,
+            ItemIds = ids.OrderByDescending(d => d % 10000).ToList()
+        };
+        var resp = await hc.PostAsJsonAsync("api/Quest/AddAreaExtraDrops", d);
+        var cnt = await resp.ReadAsAsync<int>();
+        ns.Notify(NotificationSeverity.Success, $"添加成功 {cnt}");
+    }
+}

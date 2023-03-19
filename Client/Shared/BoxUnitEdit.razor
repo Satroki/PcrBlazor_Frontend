@@ -1,0 +1,509 @@
+﻿@inject ApiService api
+@inject DialogService dialog
+@inject NotificationService notify
+@inject TooltipHelperService ts
+
+<RadzenTemplateForm Submit="@Save" TItem="UserBoxLine" InvalidSubmit="OnInvalidSubmit" Data="@Line">
+    <div class="d-flex">
+        <div class="f-25">
+            <div class="col-center">
+                <img src="@Line.Icon.GetUnitIcon()" Style="width:104px;height:104px" />
+                <div class="d-flex align-items-center" style="margin:10px 0">
+                    <BoxUnitEquipments Line="@Line" AllowEdit="true" MultiMode=@multiMode />
+                    @if (Line.EnableTargetSolts)
+                    {
+                        <i class="rzi">arrow_right_alt</i>
+                        <BoxUnitTargetEquipments Line="@Line" Promotion="@Line.TargetUnitPromotion" MultiMode=@multiMode />
+                    }
+                </div>
+                <div class="d-f-c">
+                    <RadzenCheckBox @bind-Value="Line.EnableTargetSolts" Style="margin-left:10px" />
+                    <RadzenLabel Text="装备" Style="margin-left:5px" MouseEnter="@(e=>ts.ShowString(e,"是否启用目标Rank装备自定义"))" MouseLeave="ts.Close" />
+                </div>
+                <div class="d-f-c" style="margin-top:7px">
+                    <RadzenCheckBox @bind-Value="noConsume" Style="margin-left:10px" />
+                    <RadzenLabel Text="不扣库存" Style="margin-left:5px" MouseEnter="@(e=>ts.ShowString(e,"本次保存不扣除库存"))" MouseLeave="ts.Close" />
+                </div>
+            </div>
+        </div>
+        <div class="f-1" style="margin-left:10px">
+            <div class="d-flex">
+                <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="等级" />
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="Level" @bind-Value="Line.Level" Min="1" Max="@maxLevel" />
+                </div>
+                <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="碎片" />
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="Pieces" @bind-Value="Line.Pieces" Min="0" Disabled="@multiMode" />
+
+                </div>
+            </div>
+            <div class="div-br" />
+            <div class="d-flex">
+                <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="星级" />
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="Rarity" @bind-Value="Line.Rarity" Min="1" Max="@maxStar" Change="@RarityChanged" />
+                </div>
+                <div class="f-20 d-f-c">
+                    <i class="rzi">arrow_right_alt</i>
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="TargetRarity" @bind-Value="Line.TargetRarity" Min="@Line.Rarity" Max="@maxStar" />
+                </div>
+            </div>
+            <div class="div-br" />
+            <div class="d-flex">
+                <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="Rank" />
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="Promotion" @bind-Value="Line.Promotion" Min="1" Max="@maxRank" Change="@RankChanged" />
+                </div>
+                <div class="f-20 d-f-c">
+                    <i class="rzi">arrow_right_alt</i>
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="TargetPromotion" @bind-Value="Line.TargetPromotion" Min="@Line.Promotion" Max="@maxRank" Change="@TargetRankChanged" />
+                </div>
+            </div>
+            <div class="div-br" />
+            <div class="d-flex">
+                <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="好感" />
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="LoveLevel" @bind-Value="Line.LoveLevel" Min="1" Max="@maxLoveLevel" Change="@LoveLevelChanged" />
+                </div>
+                <div class="f-20 d-f-c">
+                    <i class="rzi">arrow_right_alt</i>
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="TargetLoveLevel" @bind-Value="Line.TargetLoveLevel" Min="@Line.LoveLevel" Max="@maxLoveLevel" />
+                </div>
+            </div>
+            <div class="div-br" />
+            <div class="d-flex">
+                <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="专武" />
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="UniqueEquipRank" @bind-Value="Line.UniqueEquipRank" Min="0" Max="@maxUniqueLevel"
+                              Change="@UniqueEquipRankChanged" Disabled="@noUnique" />
+                </div>
+                <div class="f-20 d-f-c">
+                    <i class="rzi">arrow_right_alt</i>
+                </div>
+                <div class="f-30">
+                    <NumInput input-block Name="TargetUniqueEquipRank" @bind-Value="Line.TargetUniqueEquipRank" Min="@Line.UniqueEquipRank" Max="@maxUniqueLevel"
+                              Disabled="@noUnique" />
+                </div>
+            </div>
+            <div class="div-br" />
+            <div class="d-flex">
+                <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="备注" />
+                </div>
+                <div class="f-80">
+                    <RadzenTextBox style="width: 100%;" Name="Note" @bind-Value="Line.Note" />
+                </div>
+            </div>
+            <div class="div-br" />
+            <div class="d-flex">
+                <div class="f-30 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="等级突破" />
+                </div>
+                <div class="f-70">
+                    <RadzenRadioButtonList @bind-Value=Line.LevelBreak TValue="bool?" Change="@LevelBreakChanged">
+                        <Items>
+                            <RadzenRadioButtonListItem Text="无" Value="@null" TValue="bool?" />
+                            <RadzenRadioButtonListItem Text="待突破" Value="false" TValue="bool?" />
+                            <RadzenRadioButtonListItem Text="已突破" Value="true" TValue="bool?" />
+                        </Items>
+                    </RadzenRadioButtonList>
+                </div>
+            </div>
+            @if (rankSetting.AllowAllRank && !rankSetting.ApplyToAll)
+            {
+                <div class="div-br" />
+                <div class="d-flex">
+                    <div class="f-25 align-items-center justify-content-center d-flex">
+                        <RadzenLabel Text="Rank上限" />
+                    </div>
+                    <div class="f-25">
+                        <RadzenNumeric input-block TValue="int?" @bind-Value="Line.MaxRank" Min="1"
+                                   Change="@(async ()=> { SetMaxRank();await SetSlots(); })" />
+
+                    </div>
+                    <div class="f-25 align-items-center justify-content-center d-flex">
+                        <RadzenLabel Text="装备上限" />
+                    </div>
+                    <div class="f-25">
+                        <RadzenNumeric input-block TValue="int?" @bind-Value="Line.MaxSlots" Max="6" Min="1"
+                                   Change="SetSlots" />
+                    </div>
+                </div>
+            }
+            <div class="div-br" />
+            <div class="d-flex">
+                <div class="f-25 d-f-c">
+                    <RadzenLabel Text="优先级" Style="margin:0 5px 0 10px;" MouseEnter="@(e=>ts.ShowString(e,"装备刷取优先级，用于规划排序"))" MouseLeave="ts.Close" />
+                </div>
+                <div class="f-25">
+                    <RadzenNumeric @bind-Value="Line.Priority" input-block />
+                </div>
+                <div class="f-20 d-f-c">
+                </div>
+                <div class="f-30 d-f-c">
+                    <RadzenCheckBox @bind-Value="Line.Trace" Style="margin-right:5px" />
+                    <RadzenLabel Text="常用" MouseEnter="@(e=>ts.ShowString(e,"标记常用角色，用于Box筛选"))" MouseLeave="ts.Close" />
+                </div>
+            </div>
+        </div>
+        <br />
+    </div>
+    @if (calc && us != null && ous != null)
+    {
+        <StatusCard NewStatus="us" OldStatus="ous" ShowAll="@showall" />
+    }
+    <div class="d-flex align-items-center flex-column">
+        <div class="d-flex align-items-end justify-content-center" style="margin-top: 20px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="暂存" Click="SaveTemp" Style="margin-right:10px;padding:0 16px"
+                          MouseEnter="@(e=>ts.ShowString(e,"暂存当前状态作为比较基准"))" MouseLeave="ts.Close"
+                          hidden="@(multiMode || !calc)" Disabled="loading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Success" Text="拉满" Click="SetMax" Style="margin-right:10px;padding:0 16px"
+                          MouseEnter="@(e=>ts.ShowString(e,"设置所有属性到服务器最大值"))" MouseLeave="ts.Close" Disabled="loading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Info" Text="毕业" Click="SetFinish" Style="margin-right:10px;padding:0 16px"
+                          MouseEnter="@(e=>ts.ShowString(e,"设置所有属性到目标值"))" MouseLeave="ts.Close" Disabled="loading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" ButtonType="ButtonType.Submit" Text="保存" Style="margin-right:10px;padding:0 16px" Disabled="loading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Danger" Text="删除"
+                          Style="margin-right:10px;padding:0 16px"
+                          Click="@Delete" hidden="@multiMode" Disabled="loading" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="取消"
+                          Click="@Cancel" Style="padding: 0 16px" Disabled="loading" />
+        </div>
+        @if (finishMode)
+        {
+            <p style="color:red;font-size:0.8em;margin:10px 0 0 0">已开启保存后自动设置毕业</p>
+        }
+    </div>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public UserBoxLine Line { get; set; }
+    [Parameter]
+    public UserBoxLine OriLine { get; set; }
+
+    MultiBoxLine multiLine;
+    UnitServerInfo info;
+    UnitServerInfo jpi;
+    int maxUniqueLevel;
+    int maxRank;
+    int maxStar = 5;
+    int maxLoveLevel = 8;
+    bool noUnique = true;
+    bool multiMode = false;
+    UnitStatusCalculator calculator;
+    UnitStatus us;
+    UnitStatus ous;
+    List<UserBoxLine> box;
+    bool onRankChanging = false;
+    bool calc;
+    bool tslots;
+    bool showall;
+    UnitSourceData sd;
+    int? mr, ms;
+    bool ma;
+    bool finishMode;
+    IRankSlotSetting rankSetting;
+    bool loading;
+    int maxLevel;
+    bool noConsume;
+
+    protected override async Task OnInitializedAsync()
+    {
+        info = await api.GetServerInfoAsync(Line.Server);
+        maxUniqueLevel = info.MaxUniqueLevel;
+        maxLevel = info.MaxLevel;
+        rankSetting = api.Settings.GetRankSetting(Line.Server);
+        jpi = await api.GetServerInfoAsync("jp");
+        if (api.Settings.UseJpUniqueRank)
+        {
+            maxUniqueLevel = jpi.MaxUniqueLevel;
+        }
+        if (Line != null && Line.LevelBreak.HasValue)
+        {
+            maxLevel = info.MaxLevel + 10;
+        }
+        SetMaxRank();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        calc = api.Settings.AutoStatusCalc;
+        showall = api.Settings.ShowAllStatus;
+        if (Line is MultiBoxLine m)
+        {
+            multiLine = m;
+            multiMode = true;
+            noUnique = !info.UniqueEquipUnits.Intersect(multiLine.LineUnitIds).Any();
+            maxStar = info.Rarity6Units.Intersect(multiLine.LineUnitIds).Any() ? 6 : 5;
+            m.PropertyChanged += MultiLine_PropertyChanged;
+        }
+        else if (Line != null)
+        {
+            if (Line.HasRarity6 || (api.Settings.UseJpRarity6 && jpi.Rarity6Units.Contains(Line.UnitId)))
+            {
+                maxStar = 6;
+                maxLoveLevel = 12;
+            }
+            if (Line.HasUniqueEquip || api.Settings.AllowAllUnique)
+                noUnique = false;
+            (mr, ms, ma) = await api.GetLimitParamAsync(Line.Server);
+            Line.TargetUnitPromotion = await api.GetUnitPromotionAsync(Line, Line.TargetPromotion);
+            if (!Line.EnableTargetSolts)
+                Line.CheckAllTargetSlots();
+            if (calc && OriLine != null)
+            {
+                box = await api.GetUserBox(Line.Server);
+                calculator = await api.GetStatusCalculator(Line.Server);
+                sd = await api.GetUnitSourceDataAsync(Line.UnitId);
+                us = calculator.CalcUnitStatus(Line, sd, box, mr, ms, ma);
+                ous = calculator.CalcUnitStatus(OriLine, sd, box, mr, ms, ma);
+                Line.PropertyChanged += Line_PropertyChanged;
+            }
+        }
+        await api.GetEquipmentStatusSetAsync();
+    }
+
+    void MultiLine_PropertyChanged(string p)
+    {
+        multiLine.Fields.Add(p);
+    }
+
+    void Line_PropertyChanged(string p)
+    {
+        if (calculator != null && sd != null && !onRankChanging)
+        {
+            us = calculator.CalcUnitStatus(Line, sd, box, mr, ms, ma);
+            if (p.StartsWith("Slot"))
+            { StateHasChanged(); }
+        }
+    }
+
+    void SetMaxRank()
+    {
+        if (rankSetting.AllowAllRank)
+        {
+            if (rankSetting.ApplyToAll)
+                maxRank = rankSetting.MaxRank;
+            else
+                maxRank = Line?.MaxRank ?? info.MaxRank;
+        }
+        else
+        {
+            maxRank = info.MaxRank;
+        }
+    }
+
+    async Task SetSlots()
+    {
+        if (multiMode)
+            return;
+        if (sd != null)
+        {
+            Line.UnitPromotion = sd.UnitPromotions.Find(p => p.PromotionLevel == Line.Promotion)?.CheckLimit(mr, ms, ma, Line);
+        }
+        else
+            Line.UnitPromotion = await api.GetUnitPromotionAsync(Line);
+        Line.UnitPromotion ??= UnitPromotion.CreateDefault(Line.UnitId, Line.Promotion);
+    }
+
+    async Task SetMax()
+    {
+        Line.Level = maxLevel;
+        Line.Rarity = Line.TargetRarity = maxStar;
+        if (Line.Promotion != maxRank)
+        {
+            Line.Promotion = Line.TargetPromotion = maxRank;
+            await RankChanged(maxRank);
+        }
+        Line.LoveLevel = Line.TargetLoveLevel = maxLoveLevel;
+        if (!noUnique)
+            Line.UniqueEquipRank = Line.TargetUniqueEquipRank = info.MaxUniqueLevel;
+        Line.CheckAllSlots();
+    }
+
+    async Task SetFinish()
+    {
+        Line.Level = maxLevel;
+        if (multiMode)
+        {
+            finishMode = !finishMode;
+            return;
+        }
+        Line.Rarity = Line.TargetRarity;
+        Line.LoveLevel = Line.TargetLoveLevel;
+        if (!noUnique)
+            Line.UniqueEquipRank = Line.TargetUniqueEquipRank;
+        if (Line.Promotion != Line.TargetPromotion)
+        {
+            Line.Promotion = Line.TargetPromotion;
+            await RankChanged(Line.Promotion);
+        }
+        Line.CheckAllSlots(true);
+    }
+
+    async Task RankChanged(int r)
+    {
+        onRankChanging = true;
+        if (multiMode)
+            Line.UnitPromotion = multiLine.DefultPromotion;
+        else
+        {
+            await SetSlots();
+        }
+        Line.Slot1 = Line.Slot2 = Line.Slot3 = Line.Slot4 = Line.Slot5 = Line.Slot6 = false;
+        if (Line.TargetPromotion < r)
+        {
+            Line.TargetPromotion = r;
+            await TargetRankChanged(r);
+        }
+        onRankChanging = false;
+        Line_PropertyChanged(nameof(Line.Promotion));
+    }
+
+    async Task TargetRankChanged(int r)
+    {
+        if (multiMode)
+            return;
+        if (sd != null)
+        {
+            Line.TargetUnitPromotion = sd.UnitPromotions.Find(p => p.PromotionLevel == Line.TargetPromotion)?.CheckLimit(mr, ms, ma, Line);
+        }
+        else
+            Line.TargetUnitPromotion = await api.GetUnitPromotionAsync(Line, Line.TargetPromotion);
+        Line.TargetUnitPromotion ??= UnitPromotion.CreateDefault(Line.UnitId, Line.TargetPromotion);
+        Line.CheckAllTargetSlots();
+        StateHasChanged();
+    }
+
+    void RarityChanged(int r)
+    {
+        if (Line.TargetRarity < r)
+            Line.TargetRarity = r;
+    }
+
+    void LoveLevelChanged(int r)
+    {
+        if (Line.TargetLoveLevel < r)
+            Line.TargetLoveLevel = r;
+    }
+
+    void UniqueEquipRankChanged(int r)
+    {
+        if (Line.TargetUniqueEquipRank < r)
+            Line.TargetUniqueEquipRank = r;
+    }
+
+    void LevelBreakChanged()
+    {
+        maxLevel = Line.LevelBreak.HasValue ? info.MaxLevel + 10 : info.MaxLevel;
+        if (Line.Level > maxLevel)
+            Line.Level = maxLevel;
+    }
+
+    void Cancel()
+    {
+        dialog.Close(null);
+    }
+
+    async Task Delete()
+    {
+        try
+        {
+            loading = true;
+            var r = await api.DeleteUserBoxLine(Line);
+            if (r)
+            {
+                dialog.Close();
+            }
+            else
+            {
+                notify.Notify(NotificationSeverity.Error, "删除失败");
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    async Task Save(UserBoxLine sline)
+    {
+        try
+        {
+            loading = true;
+            if (multiMode)
+            {
+                if (multiLine.Fields.IsNullOrEmpty() && !finishMode)
+                {
+                    dialog.Close(null);
+                    return;
+                }
+                multiLine.Fields = multiLine.Fields.Distinct().ToList();
+                multiLine.FinishMode = finishMode;
+                var nl = await api.EditUserBoxLines(multiLine);
+                if (nl == null)
+                {
+                    notify.Notify(NotificationSeverity.Error, "保存失败");
+                }
+                else
+                {
+                    notify.Notify(NotificationSeverity.Success, $"成功保存 {nl.Count} 条");
+                    dialog.Close(new BoxEditModel { Lines = nl, NoConsume = noConsume });
+                }
+            }
+            else
+            {
+                if (Line.Pieces > 0 && Line.Pieces == OriLine.Pieces
+                    && (Line.Rarity > OriLine.Rarity || Line.UniqueEquipRank > OriLine.UniqueEquipRank
+                    || (Line.LevelBreak == true && OriLine.LevelBreak != true)))
+                {
+                    var si = await api.GetServerInfoAsync(Line.Server);
+                    var (d, _, _) = PieceStock.CalcTarget(OriLine, Line, si.LimitedUnits.Contains(Line.UnitId), si.UniqueEquipmentRankup);
+                    Line.Pieces = Math.Max(0, Line.Pieces - d);
+                }
+                var nl = await api.EditUserBoxLine(Line);
+                if (nl == null)
+                {
+                    notify.Notify(NotificationSeverity.Error, "保存失败");
+                }
+                else
+                {
+                    dialog.Close(new BoxEditModel { Line = nl, NoConsume = noConsume });
+                }
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    void OnInvalidSubmit(FormInvalidSubmitEventArgs args)
+    {
+        Console.WriteLine(string.Join(Environment.NewLine, args.Errors));
+    }
+
+    void SaveTemp()
+    {
+        ous = us;
+    }
+}

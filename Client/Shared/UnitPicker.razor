@@ -1,0 +1,132 @@
+﻿@inject ApiService api
+@inject DialogService ds
+@inject TooltipHelperService ts
+
+<div class="d-flex align-items-center" style="margin-bottom:10px;">
+    <RadzenCheckBox TValue="bool" @bind-Value="all" Style="margin:0 5px 0 10px" Change="SelectAll" />
+    <RadzenLabel Text="全选" />
+    @if (Server == "cn")
+    {
+        <RadzenCheckBox TValue="bool" @bind-Value="showJp" Style="margin:0 5px 0 10px" Change="ShowJpChanged" />
+        <RadzenLabel Text="未实装" />
+    }
+</div>
+@if (units == null)
+{
+    <ProgressRing />
+}
+else
+{
+    <div class="up-div">
+        @foreach (var u in units.OrderBy(u => u.SearchAreaWidth))
+        {
+            <div class="up-unit" selected="@u.IsSelected" @onclick="()=>u.IsSelected=!u.IsSelected">
+                <RadzenImage Path="@u.Icon.GetUnitIcon()" MouseEnter="e=>ts.ShowString(e,u.UnitName)" MouseLeave="ts.Close" />
+            </div>
+        }
+    </div>
+}
+<div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="确定"
+                  Click="Ok" />
+    <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="()=>ds.Close()" />
+</div>
+
+<style>
+    .up-div {
+        display: flex;
+        flex-wrap: wrap;
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+    }
+
+    .up-unit {
+        border: 2px solid;
+        border-color: transparent;
+        border-radius: 5px;
+        margin: 1px;
+    }
+
+        .up-unit img {
+            width: 72px;
+            height: 72px;
+            cursor: pointer;
+        }
+
+        .up-unit[selected] {
+            border-color: dodgerblue;
+        }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [Parameter]
+    public List<int> Filter { get; set; }
+    [Parameter]
+    public List<int> Preset { get; set; }
+    [Parameter]
+    public List<int> Selected { get; set; }
+
+    List<UnitData> units = null;
+    List<UnitData> unitsBak = null;
+    List<UnitData> jpUnits = null;
+
+    bool all;
+    bool showJp = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var all = await api.GetUnitDatasAsync(Server);
+        if (Filter.IsNullOrEmpty())
+            unitsBak = units = all;
+        else
+            unitsBak = units = all.Where(a => !Filter.Contains(a.UnitId)).ToList();
+
+        if (!Preset.IsNullOrEmpty())
+            unitsBak = units = unitsBak.Where(a => Preset.Contains(a.UnitId)).ToList();
+
+        if (!Selected.IsNullOrEmpty())
+        {
+            foreach (var ud in units.Where(u => Selected.Contains(u.UnitId)))
+                ud.IsSelected = true;
+        }
+    }
+
+    void SelectAll(bool v)
+    {
+        units?.ForEach(u => u.IsSelected = v);
+    }
+
+    async Task ShowJpChanged()
+    {
+        if (showJp)
+        {
+            if (jpUnits == null)
+            {
+                jpUnits = await api.GetUnitDatasAsync("jp");
+                if (!Filter.IsNullOrEmpty())
+                    jpUnits = jpUnits.Where(a => !Filter.Contains(a.UnitId)).ToList();
+            }
+            units = units.Union(jpUnits, new UnitIdEqualityComparer()).ToList();
+        }
+        else
+        {
+            units = unitsBak;
+        }
+    }
+
+    void Ok()
+    {
+        if (units != null)
+        {
+            var u = units.Where(u => u.IsSelected).ToList();
+            ds.Close(u);
+            u.ForEach(u => u.IsSelected = false);
+        }
+        else
+        {
+            ds.Close();
+        }
+    }
+}

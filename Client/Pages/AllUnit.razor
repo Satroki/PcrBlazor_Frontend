@@ -1,0 +1,164 @@
+﻿@page "/units"
+@inject ApiService api
+@inject NotificationService ntf
+@inject DialogService ds
+
+<RadzenCard Style="position:relative">
+    <div class="row align-items-center sticky-header">
+        <RadzenDropDown TValue="UnitPosition?" @bind-Value="pos" AllowClear="true" Data="@posDict" TextProperty="Key" ValueProperty="Value"
+                        Placeholder="角色位置..." Style="width:128px;" />
+        @if (Server == "cn")
+        {
+            <RadzenCheckBox TValue="bool" @bind-Value="showJp" Style="margin:0 5px 0 10px" Change="ShowJpChanged" />
+            <RadzenLabel Text="显示未实装" />
+        }
+        @if (isAdmin)
+        {
+            <RadzenCheckBox TValue="bool" @bind-Value="showNicks" Style="margin:0 5px 0 10px" />
+            <RadzenButton Text="检查昵称" Click="CheckNickName" />
+        }
+        @if (showAdd)
+        {
+            <div class="units-menu">
+                <div class="d-flex justify-content-center align-items-center">
+                    <RadzenCheckBox TValue="bool" @bind-Value="hideInBox" Style="margin:0 5px 0 0" />
+                    <RadzenLabel Text="隐藏已有" />
+                </div>
+                <RadzenButton Text="全部添加" Click="AddAll" Disabled="@loading" Style="margin-left:10px" />
+            </div>
+        }
+    </div>
+    @if (groups != null)
+    {
+        foreach (var g in groups)
+        {
+            <div class="row" style="margin:0 -20px">
+                @foreach (var u in g)
+                {
+                    @if ((!showNicks || ruids.Contains(u.UnitId)) && (!u.InBox || !hideInBox) && (!pos.HasValue || u.SearchAreaWidth.GetUnitPosition() == pos))
+                    {
+                        <UnitCard Unit="u" OnAddClick="AddToBoxAsync" ShowAdd="@showAdd" NickNames="@GetNickName(u.UnitId)" IsAdmin="@isAdmin" />
+                    }
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <ProgressRing />
+    }
+</RadzenCard>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<IGrouping<int, UnitData>> groups;
+    List<UnitData> units;
+    List<UnitData> jpUnits;
+    UnitPosition? pos;
+    Dictionary<int, UnitNickNames> nickNameDict = new Dictionary<int, UnitNickNames>();
+    Dictionary<string, UnitPosition> posDict = new Dictionary<string, UnitPosition>
+        {
+            ["前卫"] = UnitPosition.Front,
+            ["中卫"] = UnitPosition.Middle,
+            ["后卫"] = UnitPosition.Behind,
+        };
+    List<int> ruids = new();
+
+    bool showAdd;
+    bool hideInBox;
+    bool loading;
+    bool showJp;
+    bool showNicks;
+    bool isAdmin = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var st = await authenticationStateTask;
+        showAdd = st.User.Identity.IsAuthenticated;
+        isAdmin = st.User.IsInRole("Admin");
+        nickNameDict = await api.GetUnitNickNamesAsync();
+        ruids = nickNameDict.Values.Where(n => n.Requests.Any()).Select(n => n.UnitId).ToList();
+        units = await api.GetUnitDatasAsync(Server);
+        if (!units.IsNullOrEmpty() && showAdd)
+        {
+            await api.CheckInBoxAsync(units, Server);
+        }
+        GroupUnits(units);
+    }
+
+    void GroupUnits(List<UnitData> units)
+    {
+        groups = units.OrderByDescending(u => u.Rarity).ThenBy(u => u.UnitId)
+            .GroupBy(u => u.Rarity).ToList();
+    }
+
+    async Task AddToBoxAsync(UnitData u)
+    {
+        await api.AddUserBoxLine(u, Server);
+    }
+
+    async Task ShowJpChanged()
+    {
+        if (showJp)
+        {
+            if (jpUnits == null)
+            {
+                jpUnits = await api.GetUnitDatasAsync("jp");
+            }
+            var tempUnits = units.Union(jpUnits, new UnitIdEqualityComparer()).ToList();
+            if (!tempUnits.IsNullOrEmpty() && showAdd)
+            {
+                await api.CheckInBoxAsync(tempUnits, Server);
+            }
+            GroupUnits(tempUnits);
+        }
+        else
+        {
+            GroupUnits(units);
+        };
+    }
+
+    async Task AddAll()
+    {
+        try
+        {
+            loading = true;
+            var cnt = await api.AddUserBoxLines(units, Server);
+            switch (cnt)
+            {
+                case null:
+                    ntf.Notify(NotificationSeverity.Error, $"添加失败");
+                    break;
+                case 0:
+                    ntf.Notify(NotificationSeverity.Warning, $"无可添加角色");
+                    break;
+                default:
+                    ntf.Notify(NotificationSeverity.Success, $"成功添加 {cnt} 条");
+                    break;
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    async Task CheckNickName()
+    {
+        var us = nickNameDict.Values.Where(n=>n.Requests.Any()).ToList();
+        await ds.OpenAsync<CheckNickNames>("检查昵称", new()
+            {
+                ["NickNames"] = us
+            }, new DialogOptions { Width = "60vw" });
+    }
+
+    UnitNickNames GetNickName(int uid)
+    {
+        nickNameDict.TryGetValue(uid, out var n);
+        return n ?? new UnitNickNames { UnitId = uid };
+    }
+}

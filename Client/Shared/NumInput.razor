@@ -1,0 +1,88 @@
+﻿<span class="rz-spinner @(Disabled ? "rz-state-disabled" :"")" style="@Style" @attributes="InputAttributes">
+    <input type="number" class="rz-spinner-input rz-inputtext" name="@Name" disabled="@Disabled" max="@Max" min="@Min"
+           @bind-value="v" tabindex="0" @onkeyup="OnKeyUp" @onfocusout="UpdateValue" />
+    <button type="button" class="rz-spinner-button rz-spinner-up rz-corner-tr rz-button  " tabindex="-1" disabled="@Disabled"
+            @onclick="UpClick">
+        <span class="rz-spinner-button-icon rzi rzi-caret-up "></span>
+    </button>
+    <button type="button" class="rz-spinner-button rz-spinner-down rz-corner-br rz-button  " tabindex="-1" disabled="@Disabled"
+            @onclick="DownClick">
+        <span class="rz-spinner-button-icon rzi rzi-caret-down "></span>
+    </button>
+</span>
+
+@code {
+    int v;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> InputAttributes { get; set; }
+
+    [Parameter]
+    public int Value { get; set; }
+    [Parameter]
+    public int Min { get; set; } = 0;
+    [Parameter]
+    public int Max { get; set; } = 99999;
+    [Parameter]
+    public EventCallback<int> Change { get; set; }
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+    [Parameter]
+    public bool Disabled { get; set; }
+    [Parameter]
+    public string Name { get; set; }
+    [Parameter]
+    public string Style { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        v = Value;
+    }
+
+    async Task UpdateValue()
+    {
+        await ChangeValue(v);
+    }
+
+    async Task ChangeValue(int i)
+    {
+        if (i > Max)
+            i = Max;
+        if (i < Min)
+            i = Min;
+        v = i;
+        if (i != Value)
+        {
+            await ValueChanged.InvokeAsync(i);
+            await Change.InvokeAsync(i);
+        }
+    }
+
+    async Task UpClick(MouseEventArgs args)
+    {
+        if (Disabled)
+            return;
+        await ChangeValue(v + 1);
+    }
+
+    async Task DownClick(MouseEventArgs args)
+    {
+        if (Disabled)
+            return;
+        await ChangeValue(v - 1);
+    }
+
+    async Task OnKeyUp(KeyboardEventArgs args)
+    {
+        if (Disabled)
+            return;
+        switch (args.Key)
+        {
+            case "Enter":
+            case "ArrowUp":
+            case "ArrowDown":
+                await UpdateValue();
+                break;
+        }
+    }
+}

@@ -1,0 +1,102 @@
+﻿@inject ApiService api
+@inject DialogService dialog
+@inject NotificationService ntf
+
+<div class="d-flex flex-row">
+    <div>
+        <RadzenListBox AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" @bind-Value="selectedUnits"
+                       Multiple="true" Data="@units" TextProperty="UnitName" ValueProperty="UnitId"
+                       Change="SelectionChanged" Style="width:200px;height: calc(70vh - 92px);" />
+    </div>
+    <div class="f-1">
+        <div class="d-flex flex-row align-items-center justify-content-center" style="margin-bottom:10px">
+            <RadzenRadioButtonList @bind-Value="type" TValue="string" Orientation="Orientation.Horizontal">
+                <Items>
+                    <RadzenRadioButtonListItem Text="都有" Value="@("and")" />
+                    <RadzenRadioButtonListItem Text="有任意" Value="@("or")" />
+                </Items>
+            </RadzenRadioButtonList>
+        </div>
+        <p class="unit-filter-help">筛选条件为单个数字或数字范围 例：5,7-9</p>
+        <div class="unit-filter-div">
+            <p class="text-wrap">角色</p>
+            <p>等级</p>
+            <p>星级</p>
+            <p>Rank</p>
+        </div>
+        <div style="height: calc(70vh - 240px);overflow-y:auto">
+            @foreach (var item in filters.Values)
+            {
+                <div class="unit-filter-div">
+                    <div style="text-align:center">@item.UnitName</div>
+                    <div><RadzenTextBox @bind-Value="item.LevelFilter" Style="width:100%" Placeholder="条件" /></div>
+                    <div><RadzenTextBox @bind-Value="item.RarityFilter" Style="width:100%" Placeholder="条件" /></div>
+                    <div><RadzenTextBox @bind-Value="item.PromotionFilter" Style="width:100%" Placeholder="条件" /></div>
+                </div>
+            }
+        </div>
+        <div class="d-flex justify-content-center">
+            <div class="d-flex align-items-end justify-content-center" style="margin-top: 20px;">
+                <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="确定" Style="margin-right:10px"
+                              Click="Submit" />
+                <RadzenButton ButtonStyle="ButtonStyle.Light" Text="取消"
+                              Click="@Cancel" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<UnitData> units;
+    Dictionary<int, UnitFilter> filters = new Dictionary<int, UnitFilter>();
+    string type = "and";
+    IEnumerable<int> selectedUnits;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        units = await api.GetUnitDatasAsync(Server);
+    }
+
+    void SelectionChanged()
+    {
+        if (selectedUnits.IsNullOrEmpty())
+            filters.Clear();
+
+        var removed = filters.Keys.Except(selectedUnits).ToArray();
+        foreach (var rid in removed)
+        {
+            filters.Remove(rid);
+        }
+        var added = selectedUnits.Except(filters.Keys).ToArray();
+        foreach (var aid in added)
+        {
+            var unit = units.Find(u => u.UnitId == aid);
+            filters.Add(aid, new UnitFilter { UnitId = unit.UnitId, UnitName = unit.UnitName });
+        }
+    }
+
+    async Task Submit()
+    {
+        if (!filters.IsNullOrEmpty())
+        {
+            var r = await api.FilterUserFavoriteAsync(filters.Values, Server, type);
+            if (r.IsNullOrEmpty())
+                ntf.Notify(NotificationSeverity.Warning, "无符合条件的Box");
+            else
+            {
+                api.FavExportSetting.Filters = filters.Values.ToList();
+                api.FavExportSetting.Server = Server;
+                api.FavExportSetting.FiltersType = type;
+                dialog.Close(r);
+            }
+        }
+    }
+
+    void Cancel()
+    {
+        dialog.Close();
+    }
+}

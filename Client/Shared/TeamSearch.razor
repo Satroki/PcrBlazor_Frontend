@@ -1,0 +1,267 @@
+﻿@inject DialogService ds
+@inject ApiService api
+@inject TooltipHelperService ts
+
+<div style="min-height:600px">
+    <div class="d-flex align-items-center" style="margin-bottom:10px">
+        <RadzenLabel Text="阶段:" />
+        <RadzenDropDown TValue="string" @bind-Value="phase" AllowClear="false" Data="phases" Style="margin:0 10px 0 5px;width:100px" />
+        <RadzenLabel Text="Boss:" />
+        <RadzenDropDown TValue="int?" @bind-Value="boss" AllowClear="true" Placeholder="全部" Data="bosses" Style="margin:0 10px 0 5px;width:100px" />
+        <RadzenButton Text="查询" ButtonStyle="ButtonStyle.Secondary" Style="padding:0 16px;" Click="Search" />
+        <div style="flex:1;text-align:right" hidden="@(!myteams.Any())">
+            <RadzenButton Text="@($"保存到作业库 ({myteams.Count})")" Style="padding:0 16px;" Click="Save" />
+        </div>
+    </div>
+    <div>
+        @if (loading)
+        {
+            <ProgressRing />
+        }
+        else if (teamGroups != null)
+        {
+            if (teamGroups.Any())
+            {
+                <RadzenTabs>
+                    <Tabs>
+                        @foreach (var g in teamGroups)
+                        {
+                            <RadzenTabsItem Text="@g.Name">
+                                @foreach (var t in g.Teams.Skip(g.Skip).Take(pageSize))
+                                {
+                                    <div class="ts-team">
+                                        <div class="mteam-tdiv d-flex">
+                                            <p>@t.Name<span>@t.Note</span></p>
+                                            <div class="d-flex align-items-center" style="justify-content:flex-end;flex:1">
+                                                <p style="color:lightgrey;margin:0 5px">@t.Like</p>
+                                                @if (!t.Liked)
+                                                {
+                                                    <i class="rzi" style="cursor:pointer;color:lightgrey" @onclick="_=>LikeClick(t,true)">favorite_border</i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="rzi" style="cursor: pointer;color:orangered" @onclick="_=>LikeClick(t,false)">favorite</i>
+                                                }
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            @foreach (var u in t.Units)
+                                            {
+                                                <img src="@u.Icon.GetUnitIcon('3')" style="width:64px;height:64px;margin:2px" title="@u.UnitName" />
+                                            }
+                                            <div style="margin:0 0 0 10px">
+                                                <p style="margin:0">@t.Damage 万</p>
+                                                <div class="d-flex align-items-center">
+                                                    @if (t.Auto || t.Tail)
+                                                    {
+                                                        <p style="color:dodgerblue;font-size:0.875rem;margin:5px 5px 0 0">@t.TypeDesp</p>
+                                                    }
+                                                    @if (!t.Axis.IsNullOrEmpty() || !t.Links.IsNullOrEmpty())
+                                                    {
+                                                        <i class="rzi" style="cursor:pointer;color:dodgerblue;margin:5px 0 0 0" @onclick="_=>t.ShowAxis=!t.ShowAxis">list</i>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div style="flex:1;display:flex;align-items:center;justify-content:flex-end">
+                                                <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Primary" Click="_=>Add(t)" Style="margin:0 10px 0 5px"
+                                              Disabled="@tidSet.Contains(t.Id)" />
+                                                @if (t.UserId == userId || isAdmin)
+                                                {
+                                                    <RadzenButton Icon="remove" ButtonStyle="ButtonStyle.Danger" Click="_=>Del(t)" Style="margin:0 10px 0 0" />
+                                                }
+                                            </div>
+                                        </div>
+                                        @if (t.ShowAxis)
+                                        {
+                                            <div style="white-space:pre">
+                                                <div>@t.Axis</div>
+                                                @if (!t.Links.IsNullOrEmpty())
+                                                {
+                                                    <div>
+                                                        @foreach (var linkArr in t.Links)
+                                                        {
+                                                            <a href="@linkArr[1]" target="_blank" class="ts-team-link">
+                                                                @linkArr[0]
+                                                                @if (linkArr.Length == 3)
+                                                                {
+                                                                    <span>@linkArr[2]</span>
+                                                                }
+                                                            </a>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                <RadzenPager Count="g.Teams.Count" PageSize="@pageSize" PageNumbersCount="5" PageChanged="(e)=>PageChanged(e,g)" />
+                            </RadzenTabsItem>
+                        }
+                    </Tabs>
+                </RadzenTabs>
+                <div class="d-flex align-items-center justify-content-end" style="margin-top:10px">
+                    <RadzenCheckBox TValue="bool" @bind-Value="tail" />
+                    <RadzenLabel Text="尾刀" Style="margin:0 10px 0 5px" />
+                    <RadzenCheckBox TValue="bool" @bind-Value="auto" />
+                    <RadzenLabel Text="自动" Style="margin:0 10px 0 5px" />
+                    <RadzenCheckBox TValue="bool" @bind-Value="auto_h" />
+                    <RadzenLabel Text="半自动" Style="margin:0 10px 0 5px" />
+                    <RadzenCheckBox TValue="bool" @bind-Value="manual" />
+                    <RadzenLabel Text="手动" Style="margin:0 10px 0 5px" />
+                    <RadzenButton Text="批量选择" Style="padding:0 16px;margin-right:10px" Click="AddAll" />
+                    <RadzenButton Text="清空已选" Style="padding:0 16px;" Click="ClearAll" ButtonStyle="ButtonStyle.Danger" />
+                </div>
+            }
+            else
+            {
+                <div>暂无结果</div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .ts-team {
+        padding: 5px;
+        border-top: 1px solid #dddddd;
+    }
+
+        .ts-team:first-child {
+            border-top: 0;
+        }
+
+    .ts-team-link {
+        margin-right: 10px;
+        display: block;
+    }
+
+        .ts-team-link span {
+            margin-left: 5px;
+            color: grey;
+            font-size: 0.9rem;
+        }
+</style>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    [Parameter]
+    public bool DocMode { get; set; }
+
+    List<string> phases = new List<string> { "A", "B", "C", "D", "E", "F" };
+    List<int> bosses = new List<int> { 1, 2, 3, 4, 5, 6 };
+
+    string phase = "A";
+    int? boss = null;
+    bool loading;
+    HashSet<int> tidSet = new HashSet<int>();
+    List<ClanBattleTeam> teams;
+    List<ClanBattleTeamGroup> teamGroups;
+    bool isAdmin;
+    int userId;
+    int pageSize = 5;
+    bool auto = true;
+    bool auto_h = true;
+    bool manual = true;
+    bool tail = false;
+
+    List<ClanBattleTeam> myteams = new List<ClanBattleTeam>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var au = await authenticationStateTask;
+        isAdmin = au.User.IsInRole("Admin");
+        userId = au.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier).Value.AsInt();
+    }
+
+    async Task Search()
+    {
+        loading = true;
+
+        teams = DocMode
+            ? await api.GetBattleTeamsFromDoc(phase, boss)
+            : await api.SearchClanBattleTeamsAsync(Server, phase, boss);
+        teamGroups = teams.GroupBy(r => r.PhaseName).Select(g => new ClanBattleTeamGroup(g)).OrderBy(g => g.Name).ToList();
+
+        loading = false;
+    }
+
+    void PageChanged(PagerEventArgs args, ClanBattleTeamGroup tg)
+    {
+        tg.Skip = args.Skip;
+    }
+
+    void Add(ClanBattleTeam t)
+    {
+        if (!tidSet.Contains(t.Id))
+        {
+            myteams.Add(t);
+            tidSet.Add(t.Id);
+        }
+    }
+
+    async Task Del(ClanBattleTeam t)
+    {
+        if (await ds.OpenConfirmAsync("确认", "删除该作业?"))
+        {
+            if (await api.DeleteClanBattleTeamAsync(t.Id))
+            {
+                teams.Remove(t);
+                teamGroups = teams.GroupBy(r => r.PhaseName).Select(g => new ClanBattleTeamGroup(g)).OrderBy(g => g.Name).ToList();
+                StateHasChanged();
+            }
+        }
+    }
+
+    async Task LikeClick(ClanBattleTeam t, bool like)
+    {
+        var i = await api.LikeClanBattleTeam(t.Id, like);
+        t.Like = i;
+        t.Liked = like;
+    }
+
+    void Save()
+    {
+        ds.Close(myteams);
+    }
+
+    void AddAll()
+    {
+        foreach (var t in teamGroups.SelectMany(g => g.Teams))
+        {
+            if (t.Tail)
+            {
+                if (tail)
+                    Add(t);
+                else
+                    continue;
+            }
+            if (manual && !t.Auto)
+            {
+                Add(t);
+                continue;
+            }
+            if (auto_h && t.AutoH)
+            {
+                Add(t);
+                continue;
+            }
+            if (auto && t.Auto)
+            {
+                if (!auto_h && t.AutoH)
+                    continue;
+                else
+                    Add(t);
+            }
+        }
+    }
+
+    void ClearAll()
+    {
+        myteams.Clear();
+        tidSet.Clear();
+    }
+}

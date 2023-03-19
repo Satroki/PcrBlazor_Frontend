@@ -1,0 +1,33 @@
+﻿@foreach (var g in Plans.GroupBy(p => p.Type))
+{
+    <div class="d-flex dashed-b-5">
+        <p style="font-size:1.3em;font-weight:bold;color:tomato;margin:0">@g.Key</p>
+        <ul class="margin-b-0">
+            @foreach (var plan in g)
+            {
+                <li style="margin-bottom:0;white-space:pre">@GetDesp(plan)</li>
+            }
+        </ul>
+    </div>
+}
+@foreach (var g2 in ShioriPlans.GroupBy(p => p.Type))
+{
+    <div class="dashed-b-5">
+        <p style="font-size:1.3em;font-weight:bold;color:tomato;margin:0">@g2.Key</p>
+        <p style="margin-bottom:0">@string.Join(", ",g2.Select(p=>p.QuestSection))</p>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public List<QuestPlan> Plans { get; set; }
+    [Parameter]
+    public List<QuestPlan> ShioriPlans { get; set; }
+    string GetDesp(QuestPlan q)
+    {
+        var reset = q.ResetTimes > 0
+            ? $"重置 {q.ResetTimes} 次"
+            : (q.Reset ? "重置" : null);
+        return $"{q.QuestName}  {reset}";
+    }
+}

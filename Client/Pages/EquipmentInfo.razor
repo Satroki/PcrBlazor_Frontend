@@ -1,0 +1,188 @@
+﻿@page "/equip/{EquipmentId:int}"
+@inject ApiService api
+@inject IJSRuntime JSRuntime
+
+<RadzenButton Icon="arrow_back" Click="@GoBack" ButtonStyle="ButtonStyle.Primary"
+              Style="position:fixed" />
+@if (equipment == null)
+{
+    <h3 style="text-align:center">@title</h3>
+}
+else
+{
+    <RadzenCard>
+        <RadzenFieldset>
+            <HeaderTemplate>
+                <div class="unit-info-name">@equipment.EquipmentName</div>
+            </HeaderTemplate>
+            <ChildContent>
+                <div class="d-flex">
+                    <div>
+                        <RadzenFieldset Text="信息">
+                            <div>
+                                <div class="d-flex">
+                                    <img src="@equipment.EquipmentId.GetEquipIcon()" style="width:128px;height:128px" />
+                                    @if (status != null)
+                                    {
+                                        <div style="margin-left:20px">
+                                            <div class="d-flex flex-row flex-wrap" style="margin:5px -5px 0 -5px">
+                                                <div class="d-flex align-items-center justify-content-end status-div" style="flex:1 0 50%">
+                                                    <p class="status-name">需求等级</p>
+                                                    <p class="status-value">@equipment.RequireLevel</p>
+                                                </div>
+                                                @foreach (var key in UnitStatus.StatusKeys)
+                                                {
+                                                    if (ShowField(key))
+                                                    {
+                                                        <div class="d-flex align-items-center justify-content-end status-div" style="flex:1 0 50%">
+                                                            <p class="status-name">@UnitStatus.Names[key]</p>
+                                                            <p class="status-value">@status[key]</p>
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+                                            @if (maxEnhanceLevel > 0)
+                                            {
+                                                <div class="d-flex align-items-center" style="margin-top:5px">
+                                                    <p>强化等级：@enhanceLevel</p>
+                                                    <div class="f-1" style="margin:0 5px 0 20px">
+                                                        <RadzenSlider @bind-Value="enhanceLevel" TValue="int" Change="EnhanceLevelChanged" Min="0" Max="maxEnhanceLevel"
+                                                                      Style="width:100%;" />
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <p style="white-space:pre-line;margin-top:20px">@equipment.Description?.Replace("\\n", "")</p>
+                            </div>
+
+                        </RadzenFieldset>
+                        @if (sourceId > 0)
+                        {
+                            <RadzenFieldset Text="掉落">
+                                <ItemDrop ItemId="@sourceId" Style="max-width:700px;" AllowClick="true" ActuallyServer="@sv" />
+                            </RadzenFieldset>
+                        }
+                    </div>
+                    <div style="margin-left:10px" class="f-1">
+                        <div class="d-flex">
+                            <div style="margin-right:10px">
+                                <RadzenFieldset Text="合成">
+                                    <EquipmentTree Equipment="craft" CraftMode="true" />
+                                </RadzenFieldset>
+                            </div>
+                            <div>
+                                <RadzenFieldset Text="消耗">
+                                    <EquipmentTree Equipment="consumeBy" CraftMode="false" />
+                                </RadzenFieldset>
+                            </div>
+                        </div>
+                        @if (!unitPromotions.IsNullOrEmpty())
+                        {
+                            <RadzenFieldset Text="@($"需求角色（{unitPromotions.Count()}）")">
+                                <div class="d-flex flex-row flex-wrap" style="margin:-2px">
+                                    @foreach (var up in unitPromotions)
+                                    {
+                                        <div style="text-align:center;margin:2px">
+                                            <a href="/unit/@up.UnitId/@up.PromotionLevel">
+                                                <img src="@((up.UnitId+30).ToString().GetUnitIcon())" style="width:64px;height:64px" />
+                                            </a>
+                                            <p>Rank @up.PromotionLevel</p>
+                                        </div>
+                                    }
+                                </div>
+                            </RadzenFieldset>
+                        }
+                    </div>
+                </div>
+            </ChildContent>
+        </RadzenFieldset>
+    </RadzenCard>
+}
+
+@code{
+    [Parameter]
+    public int EquipmentId { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    string sv;
+
+    List<EquipmentData> equips;
+    List<EquipmentCraft> crafts;
+    UnitStatusCalculator calculator;
+    int uid;
+    int equipId;
+    int sourceId;
+    int enhanceLevel;
+    int maxEnhanceLevel;
+    EquipmentData equipment;
+    EquipmentData source;
+    SimpleEquipmentData craft;
+    SimpleEquipmentData consumeBy;
+    IEnumerable<UnitPromotion> unitPromotions;
+    string title;
+    Dictionary<string, double> status;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        title = null;
+        uid = EquipmentId % 10000;
+        equipId = 10_0000 + uid;
+        sv = Server;
+        await GetEquipments(sv);
+        if (equipment == null && sv == "cn")
+        {
+            sv = "jp";
+            await GetEquipments(sv);
+        }
+        if (equipment == null)
+        {
+            title = "找不到指定装备";
+            return;
+        }
+        enhanceLevel = maxEnhanceLevel = equipment.PromotionLevel.GetEquipmentEnhanceLevel();
+        calculator = await api.GetStatusCalculator(sv);
+        status = calculator.CalcEquipmentStatus(equipment, maxEnhanceLevel);
+        await api.GetEquipmentStatusSetAsync();
+        if (equipment.CraftFlg)
+        {
+            source = equips.FirstOrDefault(e => e.EquipmentId % 10000 == uid && !e.CraftFlg);
+            sourceId = source?.EquipmentId ?? 0;
+        }
+        else
+        {
+            sourceId = equipId;
+            source = equipment;
+        }
+
+        crafts = await api.GetEquipmentCraftsAsync(sv);
+        craft = PcrDataHelper.CalcEquipmentCrafts(equipment, 1, equips, crafts);
+        var euDict = await api.GetEquipUnitDictAsync();
+        consumeBy = PcrDataHelper.CalcEquipmentConsumeBy(equipment, equips, crafts, euDict);
+
+        var allups = await api.GetUnitPromotionsAsync();
+        unitPromotions = allups.Where(p => p.EquipSlots.Contains(equipId)).OrderBy(p => p.UnitId).ThenBy(p => p.PromotionLevel);
+    }
+
+    async Task GetEquipments(string sv)
+    {
+        equips = await api.GetEquipmentDatasAsync(sv);
+        equipment = equips.FirstOrDefault(e => e.EquipmentId == equipId);
+    }
+
+    void GoBack()
+    {
+        JSRuntime.InvokeVoidAsync("navBack");
+    }
+
+    bool ShowField(string key)
+    {
+        return status[key] != 0;
+    }
+
+    void EnhanceLevelChanged(int l)
+    {
+        status = calculator.CalcEquipmentStatus(equipment, enhanceLevel);
+    }
+}

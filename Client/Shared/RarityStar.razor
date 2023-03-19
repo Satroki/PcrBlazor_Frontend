@@ -1,0 +1,34 @@
+﻿<div class="rarity-star-div">
+    @if (HasUnique)
+    {
+        <img src="/ue.png" no-equip="@NoEquip"/>
+    }
+    @for (int i = 1; i <= Stars; i++)
+    {
+        if (i <= Value)
+        {
+            <i class="rzi rarity-star">star</i>
+        }
+        else if (i <= TargetValue)
+        {
+            <i class="rzi rarity-star">star_border</i>
+        }
+        else
+        {
+            <i class="rzi rarity-star rarity-star-t">star_border</i>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Stars { get; set; }
+    [Parameter]
+    public int Value { get; set; }
+    [Parameter]
+    public int TargetValue { get; set; }
+    [Parameter]
+    public bool NoEquip { get; set; }
+    [Parameter]
+    public bool HasUnique { get; set; }
+}

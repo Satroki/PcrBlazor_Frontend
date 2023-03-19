@@ -1,0 +1,56 @@
+﻿<div class="d-flex flex-wrap unit-prop-div">
+    <p>等级 </p>
+    <RadzenNumeric @bind-Value="Line.Level" Max="@ServerInfo.MaxLevel" Min="1" Style="width:60px" TValue="int" Change="PropChanged"/>
+    <p>星级 </p>
+    <RadzenNumeric @bind-Value="Line.Rarity" Max="@maxr" Min="1" Style="width:60px" TValue="int" Change="PropChanged"/>
+    <p>好感 </p>
+    <RadzenNumeric @bind-Value="Line.LoveLevel" Max="@ServerInfo.MaxLoveLevel" Min="1" Style="width:60px" TValue="int" Change="PropChanged"/>
+    <p>专武 </p>
+    <RadzenNumeric @bind-Value="Line.UniqueEquipRank" Max="@ServerInfo.MaxUniqueLevel" Min="0" Style="width:60px" TValue="int" Change="PropChanged"/>
+    <p>Rank </p>
+    <RadzenNumeric @bind-Value="Line.Promotion" Max="@ServerInfo.MaxRank" Min="1" Style="width:60px" TValue="int" Change="PropChanged"/>
+    <p style="margin-right:0">装备：</p>
+    <RadzenCheckBox @bind-Value="Line.Slot1" TValue="bool" Change="PropChanged"/>
+    <p class="equip-p">左上</p>
+    <RadzenCheckBox @bind-Value="Line.Slot3" TValue="bool" Change="PropChanged"/>
+    <p class="equip-p">左中</p>
+    <RadzenCheckBox @bind-Value="Line.Slot5" TValue="bool" Change="PropChanged"/>
+    <p class="equip-p">左下</p>
+    <p class="equip-p"></p>
+    <RadzenCheckBox @bind-Value="Line.Slot2" TValue="bool" Change="PropChanged"/>
+    <p class="equip-p">右上</p>
+    <RadzenCheckBox @bind-Value="Line.Slot4" TValue="bool" Change="PropChanged"/>
+    <p class="equip-p">右中</p>
+    <RadzenCheckBox @bind-Value="Line.Slot6" TValue="bool" Change="PropChanged"/>
+    <p class="equip-p">右下</p>
+</div>
+
+@code {
+    [Parameter]
+    public UserBoxLine Line { get; set; }
+    [Parameter]
+    public UnitServerInfo ServerInfo { get; set; }
+    [Parameter]
+    public EventCallback Changed { get; set; }
+    [Parameter]
+    public bool Rarity6 { get; set; }
+    int maxr = 5;
+
+    protected override void OnParametersSet()
+    {
+        if (Rarity6)
+            maxr = 6;
+        if (ServerInfo != null && Line.UnitId > 0 && ServerInfo.Rarity6Units.Contains(Line.UnitId))
+            maxr = 6;
+    }
+
+    async Task PropChanged(int i)
+    {
+        await Changed.InvokeAsync();
+    }
+
+    async Task PropChanged(bool i)
+    {
+        await Changed.InvokeAsync();
+    }
+}

@@ -1,0 +1,59 @@
+﻿@inject DialogService dialog
+@inject ApiService api
+@inject NotificationService notify
+
+<RadzenTemplateForm Data="@Log" TItem="UpdateLog" Submit="@OnSubmit" InvalidSubmit="@OnInvalidSubmit">
+    <div class="row">
+        <div class="col-md-4 align-items-center d-flex">
+            <RadzenLabel Text="版本号" />
+        </div>
+        <div class="col-md-8">
+            <RadzenTextBox style="width: 100%;display:block" @bind-Value="Log.Version" />
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col-md-4 align-items-center d-flex">
+            <RadzenLabel Text="详细" />
+        </div>
+        <div class="col-md-8">
+            <RadzenTextArea style="width: 100%;display:block" @bind-Value="Log.Log" Rows="8" />
+        </div>
+    </div>
+    <br />
+    <div class="row justify-content-center">
+        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+            <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Secondary" Text="添加" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+
+@code {
+    [Parameter]
+    public UpdateLog Log { get; set; } = new UpdateLog();
+
+    async Task OnSubmit(UpdateLog model)
+    {
+        var b = await api.AddUpdateLog(Log);
+        if (b)
+        {
+            notify.Notify(NotificationSeverity.Success, "添加成功");
+            dialog.Close();
+        }
+        else
+        {
+            notify.Notify(NotificationSeverity.Error, "添加失败");
+        }
+    }
+
+    void Cancel()
+    {
+        dialog.Close(null);
+    }
+
+    void OnInvalidSubmit(FormInvalidSubmitEventArgs args)
+    {
+    }
+}

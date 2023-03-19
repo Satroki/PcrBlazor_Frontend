@@ -1,0 +1,81 @@
+﻿@inject ApiService api;
+@inject HttpClient hc;
+
+<table class="table table-bordered w-100">
+    <thead>
+        <tr>
+            <th style="width:33%">类型</th>
+            <th style="width:33%">CN服</th>
+            <th style="width:33%">JP服</th>
+        </tr>
+    </thead>
+    @if (cnInfo != null && jpInfo != null)
+    {
+        <tbody>
+            <tr>
+                <td>Server</td>
+                <td>@cnInfo.LastModified.ToString("yy/MM/dd HH:mm:ss ")<span class="btn-span"><RadzenButton Icon="refresh" Click="@(()=>RefreshCache("cn"))" /></span></td>
+                <td>@jpInfo.LastModified.ToString("yy/MM/dd HH:mm:ss ")<span class="btn-span"><RadzenButton Icon="refresh" Click="@(()=>RefreshCache("jp"))" /></span></td>
+            </tr>
+            @foreach (var name in StoreNames.GetAllNames())
+            {
+                <tr>
+                    <td>@name</td>
+                    <td>
+                        @{var ds = GetDateString(cnInfo, name);}
+                        @ds
+                        <span class="btn-span" hidden="@(ds.IsNullOrEmpty())"><RadzenButton Icon="refresh" Click="@(()=>RefreshLastModify("cn",name))" /></span>
+                    </td>
+                    <td>
+                        @GetDateString(jpInfo, name)
+                        <span class="btn-span"><RadzenButton Icon="refresh" Click="@(()=>RefreshLastModify("jp",name))" /></span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    }
+</table>
+
+<style>
+    .btn-span {
+        margin-left: 5px;
+    }
+</style>
+
+@code {
+    UnitServerInfo cnInfo;
+    UnitServerInfo jpInfo;
+    string[] cnIgnore = new[] { "UnitSourceDataJP", "UnitPromotions", "EquipmentEnhanceRates", "EquipmentStatuses" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        cnInfo = await api.GetServerInfoAsync("cn");
+        jpInfo = await api.GetServerInfoAsync("jp");
+    }
+
+    string GetDateString(UnitServerInfo info, string key)
+    {
+        if (info == cnInfo && cnIgnore.Contains(key))
+            return string.Empty;
+        info.LastModifyDict.TryGetValue(key, out var dt);
+        return dt.ToString("yy/MM/dd HH:mm:ss ");
+    }
+
+    async Task RefreshCache(string s)
+    {
+        var dt = await hc.GetFromJsonAsync<DateTimeOffset>($"api/Manage/RefreshCache?s={s}");
+        if (s == "cn")
+            cnInfo.LastModified = dt;
+        else
+            jpInfo.LastModified = dt;
+    }
+
+    async Task RefreshLastModify(string s, string type)
+    {
+        var dt = await hc.GetFromJsonAsync<DateTimeOffset>($"api/Manage/RefreshLastModify?s={s}&type={type}");
+        if (s == "cn")
+            cnInfo.LastModifyDict[type] = dt;
+        else
+            jpInfo.LastModifyDict[type] = dt;
+    }
+}

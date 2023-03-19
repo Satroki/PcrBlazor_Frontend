@@ -1,0 +1,104 @@
+﻿@inject DialogService dialog
+@inject ApiService api
+@inject NotificationService notify
+
+<RadzenTemplateForm @ref="form" Data="@Favorite" TItem="UserFavorite" Submit="@OnSubmit" InvalidSubmit="@OnInvalidSubmit">
+    <div class="row">
+        <div class="col-md-2 align-items-center d-flex">
+            <RadzenLabel Text="链接" />
+        </div>
+        <div class="col-md-10">
+            <RadzenTextBox style="width: 100%;display:block" @bind-Value="@Link" Change="@OnLinkChanged" />
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col-md-2 align-items-center d-flex">
+            <RadzenLabel Text="备注" />
+        </div>
+        <div class="col-md-10">
+            <RadzenTextBox style="width: 100%;display:block" @bind-Value="Favorite.Note" Name="BNote" />
+            <RadzenRequiredValidator Component="BNote" Text="请输入备注" Popup="true" Style="position: absolute;z-index:99" />
+        </div>
+    </div>
+    <br />
+    <div class="row justify-content-center">
+        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+            <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Secondary" Text="添加" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="添加并继续" Style="margin-left:10px"
+                          Click="AddAndContinue" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+        </div>
+    </div>
+</RadzenTemplateForm>
+
+
+@code {
+    public UserFavorite Favorite { get; set; } = new UserFavorite();
+    [Parameter]
+    public string Link { get; set; }
+
+    RadzenTemplateForm<UserFavorite> form;
+    bool addSuccessed = false;
+
+    protected override void OnParametersSet()
+    {
+        OnLinkChanged();
+    }
+
+    void OnLinkChanged()
+    {
+        if (!Link.IsNullOrEmpty())
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(Link, @"box/(\w{32})/(\w{2})\?u=(\w*)");
+            if (m.Success)
+            {
+                Favorite.ShareId = m.Groups[1].Value;
+                Favorite.Server = m.Groups[2].Value;
+                Favorite.Note = m.Groups[3].Value;
+            }
+        }
+    }
+
+    async Task OnSubmit(UserFavorite model)
+    {
+        var f = await api.AddUserFavorite(Favorite);
+        if (f == null)
+        {
+            notify.Notify(NotificationSeverity.Error, "添加失败");
+        }
+        else
+        {
+            notify.Notify(NotificationSeverity.Success, "添加成功");
+            dialog.Close(true);
+        }
+    }
+
+    async Task AddAndContinue()
+    {
+        if (form.IsValid)
+        {
+            var f = await api.AddUserFavorite(Favorite);
+            if (f == null)
+            {
+                notify.Notify(NotificationSeverity.Error, "添加失败");
+            }
+            else
+            {
+                notify.Notify(NotificationSeverity.Success, "添加成功");
+                addSuccessed = true;
+                Favorite = new UserFavorite();
+                Link = string.Empty;
+            }
+        }
+    }
+
+    void Cancel()
+    {
+        dialog.Close(addSuccessed);
+    }
+
+    void OnInvalidSubmit(FormInvalidSubmitEventArgs args)
+    {
+    }
+}

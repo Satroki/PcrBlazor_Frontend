@@ -1,0 +1,154 @@
+﻿@inject ArmoryService arm
+@inject NotificationService nty
+@inject ApiService api
+@inject TooltipHelperService ts
+
+<div class="f-1" style="@Style">
+    @if (reslut != null)
+    {
+        @foreach (var q in reslut)
+        {
+            <div class="dashed-b-5">
+                <div style="margin-bottom:5px" class="d-flex">
+                    <div style="font-weight:bold">@GetShortName(q)</div>
+                    <div style="margin-left:15px;flex:1; color:gray">@GetDisplayName(q)</div>
+                    @if (showEfficiency)
+                    {
+                        <div style="color:gray">效率：<span style="color:red">@(q.Efficiency?.ToString("0"))</span></div>
+                    }
+                </div>
+                <div class="d-flex flex-row flex-wrap" style="margin-bottom:5px">
+                    @foreach (var d in q.DropItems.Where(d => !d.IsItem || (d.Id > 30000 && d.Id < 40000)))
+                    {
+                        <div style="position:relative">
+                            @if (AllowClick && !d.IsItem)
+                            {
+                                <a href="/equip/@d.Id">
+                                    <RadzenImage Path="@d.GetIcon()" Style="width:80px;height:80px"
+                                                 MouseEnter="e=>ts.ShowEquipmentStatus(e,d.Id,Server)" MouseLeave="ts.Close" />
+                                </a>
+                            }
+                            else
+                            {
+                                <RadzenImage Path="@d.GetIcon()" Style="width:80px;height:80px"
+                                             MouseEnter="e=>ts.ShowEquipmentStatus(e,d.Id,Server)" MouseLeave="ts.Close" />
+                            }
+                            @if (showEfficiency && d.Demand > 0)
+                            {
+                                <p class="equip-demand">@d.Demand</p>
+                            }
+
+                            @if (d.Id == ItemId)
+                            {
+                                <div class="text-center red font-weight-bold">@d.Odds%</div>
+                            }
+                            else
+                            {
+                                <div class="text-center">@d.Odds%</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <ProgressRing />
+    }
+</div>
+
+<style>
+    .equip-demand {
+        top: 60px;
+        height: 14px;
+        background: rgba(255,255,255,0.8);
+        position: absolute;
+        padding: 1px 2px;
+        border-width: 0;
+        right: 6px;
+        font-size: 12px;
+        line-height: 14px;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [Parameter]
+    public string ActuallyServer { get; set; }
+    [Parameter]
+    public int? AreaLimit { get; set; }
+    [Parameter]
+    public int ItemId { get; set; }
+    [Parameter]
+    public string Style { get; set; }
+    [Parameter]
+    public bool AllowClick { get; set; }
+    List<QuestInfo> reslut;
+
+    EquipmentStatusSet statusSet;
+    bool showEfficiency = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await api.InitSettings();
+        showEfficiency = api.Settings.EnableQuestEfficiency && (await authenticationStateTask).User.Identity.IsAuthenticated;
+        statusSet = await api.GetEquipmentStatusSetAsync();
+        IEnumerable<AreaInfo> areas = await api.GetAreaInfos(ActuallyServer ?? Server);
+        areas = areas.Where(a => a.AreaType < 20);
+        if (AreaLimit > 0)
+        {
+            areas = areas.Where(a => a.AreaLevel <= AreaLimit);
+        }
+        var query = areas.SelectMany(a => a.Quests)
+            .Where(q => q.DropItems.Any(i => i.Id == ItemId))
+            .OrderBy(q => q.AreaType)
+            .ThenBy(q => q.QuestLevel)
+            .ThenBy(q => q.Section);
+        reslut = query.ToList();
+
+        if (showEfficiency)
+        {
+            await arm.CalcQuestEfficiency(reslut, Server);
+        }
+    }
+
+    string GetShortName(QuestInfo q)
+    {
+        var type = q.AreaType switch
+        {
+            11 => "",
+            12 => "H ",
+            13 => "VH ",
+            18 => "圣迹 ",
+            19 => "神殿 ",
+            _ => string.Empty
+        };
+        var section = q.Section > 0 ? q.Section.ToString() : "All";
+        return $"{type}{q.QuestLevel}-{section}";
+    }
+
+    string GetDisplayName(QuestInfo q)
+    {
+        var type = q.AreaType switch
+        {
+            11 => "（普通）",
+            12 => "（困难）",
+            13 => "（高难）",
+            _ => string.Empty
+        };
+        var qi = q.QuestName.IndexOf(' ');
+        var qn = qi >= 0 ? q.QuestName[..qi] : q.QuestName;
+        return $"{qn}{type}";
+    }
+
+    string GetTitle(QuestDropItem di)
+    {
+        if (di.Id > 10_0000 && di.Id < 13_0000)
+            return statusSet.TryGetNameAndStatus(di.Id, Server);
+        return di.Name;
+    }
+}

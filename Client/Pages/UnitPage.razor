@@ -1,0 +1,300 @@
+﻿@page "/unit/{UnitId:int}"
+@page "/unit/{UnitId:int}/{Level:int}"
+@inject IJSRuntime JSRuntime
+@inject ApiService api
+@inject CacheService cache
+@inject NotificationService ntf
+@inject TooltipHelperService ts
+
+<RadzenButton Icon="arrow_back" Click="@GoBack" ButtonStyle="ButtonStyle.Primary"
+              Style="position:fixed;z-index:999" />
+@if (Data == null)
+{
+    if (title.IsNullOrEmpty())
+    {
+        <ProgressRing />
+    }
+    else
+    {
+        <h3 style="text-align:center">@title</h3>
+    }
+}
+else
+{
+    <RadzenCard>
+        <RadzenFieldset>
+            <HeaderTemplate>
+                <div class="unit-info-name">@Data.UnitName</div>
+            </HeaderTemplate>
+            <ChildContent>
+                <div class="d-flex">
+                    <div class="slide">
+                        <ul slide-auto="@(Data.Cards.Length==2)">
+                            @foreach (var card in Data.Cards)
+                            {
+                                <li>
+                                    <img class="d-block w-100" src="@card.GetUnitCard()">
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="f-1 unit-profile">
+                        <div class="unit-comment">@Data.Comment.Replace("\\n", "\n")</div>
+                        <div class="unit-comment">【索敌距离：@Data.SearchAreaWidth】</div>
+                        <div style="margin-top: 10px;">
+                            <RadzenFieldset Text="简介">
+                                <div class="unit-profile-info" style="margin-top:-10px">
+                                    <p class="text-center">@Data.UnitBackground.UnitName</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>声优</p>
+                                    <p>@Data.Profile.Voice</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>年龄</p>
+                                    <p>@Data.Profile.Age</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>生日</p>
+                                    <p>@Data.Profile.BirthMonth 月 @Data.Profile.BirthDay 日</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>种族</p>
+                                    <p>@Data.Profile.Race</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>所属</p>
+                                    <p>@Data.Profile.Guild</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>身高</p>
+                                    <p>@Data.Profile.Height cm</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>体重</p>
+                                    <p>@Data.Profile.Weight kg</p>
+                                </div>
+                                <div class="unit-profile-info">
+                                    <p>血型</p>
+                                    <p>@Data.Profile.BloodType</p>
+                                </div>
+                            </RadzenFieldset>
+                        </div>
+                    </div>
+                </div>
+            </ChildContent>
+        </RadzenFieldset>
+        @if (unitSourceData != null && unitSourceData.UnitPromotions != null)
+        {
+            <div style="margin-top:10px">
+                <RadzenFieldset Text="装备">
+                    <div class="d-flex align-items-center">
+                        <RadzenLabel Text="Rank" />
+                        <RadzenDropDown Data="unitSourceData.UnitPromotions" TValue="UnitPromotion" TextProperty="PromotionLevel"
+                                @bind-Value="promotion" Change="PromotionChanged" Style="margin:0 10px 0 5px;width:100px" />
+                        @if (promotion != null)
+                        {
+                            foreach (var slot in promotion.EquipSlotsVertical)
+                            {
+                                var href = slot != UnitPromotion.DefaultSlot ? "/equip/" + slot : null;
+                                <a href="@href" class="unit-equip-a"><RadzenImage Path="@slot.GetEquipIcon()" MouseEnter="e=>ts.ShowEquipmentStatus(e,slot,Server)" MouseLeave="ts.Close" /></a>
+                            }
+                        }
+                    </div>
+                </RadzenFieldset>
+            </div>
+            @if (ueData != null)
+            {
+                <div style="margin-top:10px">
+                    <RadzenFieldset Text="专武">
+                        <div class="d-flex">
+                            <img src="@ueData.EquipmentId.GetEquipIcon()" style="width:128px;height:128px" />
+                            @if (ueStatus != null)
+                            {
+                                <div style="margin-left:20px;min-width:450px">
+                                    <div class="d-flex flex-row flex-wrap" style="margin:5px -5px 0 -5px">
+                                        @foreach (var key in UnitStatus.StatusKeys)
+                                        {
+                                            if (ShowField(key))
+                                            {
+                                                <div class="d-flex align-items-center justify-content-end status-div" style="flex:1 0 50%">
+                                                    <p class="status-name">@UnitStatus.Names[key]</p>
+                                                    <p class="status-value">@ueStatus[key]</p>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                    <div class="d-flex align-items-center" style="margin-top:5px">
+                                        <p>强化等级：</p>
+                                        <div style="margin:0 5px 0 20px">
+                                            <RadzenNumeric @bind-Value="enhanceLevel" Max="@maxEnhanceLevel" Min="1" Style="width:80px" TValue="int" Change="EnhanceLevelChanged" />
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <p style="white-space:pre-line;margin-top:20px">@ueDesp</p>
+                    </RadzenFieldset>
+                </div>
+            }
+            <div style="margin-top:10px">
+                <RadzenFieldset Text="属性（不含其他同名角色）">
+                    <div>
+                        <UnitProperties Line="tempLine" ServerInfo="jpsi" Changed="Calc" />
+                        <div class="d-flex flex-row flex-wrap" style="margin:5px 0 0 5px">
+                            @foreach (var (k, v) in status.StatusDict)
+                            {
+                                if (v > 0)
+                                {
+                                    <div class="d-flex align-items-center justify-content-end status-div" style="width:200px">
+                                        <p class="status-name">@UnitStatus.Names[k]</p>
+                                        <p class="status-value">@v.ToString("n0")</p>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </RadzenFieldset>
+            </div>
+        }
+        @if (Data.Star6Data != null)
+        {
+            <RadzenTabs Style="margin-top:10px">
+                <Tabs>
+                    <RadzenTabsItem Text="1-5星">
+                        <AttackAndSkillCard Data="Data" Style="margin-top:-10px" />
+                    </RadzenTabsItem>
+                    <RadzenTabsItem Text="6星">
+                        <AttackAndSkillCard Data="Data.Star6Data" Style="margin-top:-10px" />
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+        }
+        else
+        {
+            <AttackAndSkillCard Data="Data" />
+        }
+    </RadzenCard>
+}
+
+<style>
+    .unit-equip-a {
+        margin: 0 5px;
+    }
+
+        .unit-equip-a img {
+            height: 64px;
+            width: 64px;
+        }
+
+        .unit-equip-a:nth-of-type(4) {
+            margin-left: 20px;
+        }
+</style>
+
+@code {
+    [Parameter]
+    public int UnitId { get; set; }
+    [Parameter]
+    public int? Level { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    public UnitData Data { get; set; }
+    UnitSourceData unitSourceData;
+    UnitPromotion promotion;
+    string title;
+    EquipmentStatusSet statusSet;
+    UserBoxLine tempLine;
+    UnitServerInfo jpsi;
+    UnitStatusCalculator calculator;
+    UnitStatus status;
+    UniqueEquipmentData ueData;
+    Dictionary<string, double> ueStatus;
+    int enhanceLevel = 1;
+    int maxEnhanceLevel = 1;
+    string ueDesp;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        title = string.Empty;
+        if (UnitId > 0)
+        {
+            await api.InitSettings();
+            try
+            {
+                Data = await api.GetUnitInfoAsync(UnitId, Server, api.Settings.ShowSkillValueNo);
+                unitSourceData = await api.GetUnitSourceDataAsync(UnitId);
+                var pl = Level ?? cache.LastUnitPromotionLevel;
+                if (!pl.HasValue)
+                    pl = (await api.GetServerInfoAsync(Server)).MaxRank;
+                statusSet = await api.GetEquipmentStatusSetAsync();
+                promotion = unitSourceData.UnitPromotions.First(p => p.PromotionLevel == pl.Value);
+                var si = await api.GetServerInfoAsync(Server);
+                jpsi = await api.GetServerInfoAsync("jp");
+                calculator = await api.GetStatusCalculator(Server);
+                tempLine = new UserBoxLine
+                    {
+                        UnitId = UnitId,
+                        Server = Server,
+                        Level = si.MaxLevel,
+                        Rarity = si.Rarity6Units.Contains(UnitId) ? 6 : 5,
+                        LoveLevel = si.MaxLoveLevel,
+                        UniqueEquipRank = si.UniqueEquipUnits.Contains(UnitId) ? si.MaxUniqueLevel : 0,
+                        Promotion = si.MaxRank
+                    };
+                tempLine.SetAllSlots(true);
+                status = calculator.CalcUnitStatus(tempLine, unitSourceData, null, null, null, true);
+                ueData = unitSourceData.UniqueEquipmentData;
+                if (ueData != null)
+                {
+                    maxEnhanceLevel = api.Settings.UseJpUniqueRank ? jpsi.MaxUniqueLevel : si.MaxUniqueLevel;
+                    enhanceLevel = maxEnhanceLevel;
+                    if (Server == "cn" && ueData.DescriptionCn != null)
+                    {
+                        ueDesp = $"【{ueData.EquipmentNameCn}】 {ueData.DescriptionCn.Replace("\\n", "")}";
+                    }
+                    else
+                    {
+                        ueDesp = $"【{ueData.EquipmentName}】 {ueData.Description?.Replace("\\n", "")}";
+                    }
+                    EnhanceLevelChanged(enhanceLevel);
+                }
+            }
+            catch
+            {
+                title = "找不到指定角色";
+            }
+        }
+    }
+
+    void Calc()
+    {
+        status = calculator.CalcUnitStatus(tempLine, unitSourceData, null, null, null, true);
+    }
+
+    void PromotionChanged()
+    {
+        cache.LastUnitPromotionLevel = promotion?.PromotionLevel;
+    }
+
+    void GoBack()
+    {
+        JSRuntime.InvokeVoidAsync("navBack");
+    }
+
+
+    bool ShowField(string key)
+    {
+        if (ueStatus == null)
+            return false;
+        return ueStatus[key] != 0;
+    }
+
+    void EnhanceLevelChanged(int l)
+    {
+        if (ueData != null)
+        {
+            ueStatus = calculator.CalcUniqueEquipmentStatus(ueData, unitSourceData.UniqueEquipmentEnhanceRates, enhanceLevel);
+        }
+    }
+}

@@ -1,0 +1,72 @@
+﻿@inject DialogService ds
+@inject ContextMenuService ContextMenuService
+
+<div class="col unit-card no-padding" title="@title" @oncontextmenu=@(args => ShowContextMenuWithItems(args)) @oncontextmenu:preventDefault="true">
+    <div class="unit-icon">
+        <a href="/unit/@Unit.UnitId">
+            <img src="@Unit.Icon.GetUnitIcon()" style="cursor:pointer" />
+        </a>
+        @if (ShowAdd)
+        {
+            <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Danger" Disabled="@(loading || Unit.InBox)" Click="@Add" class="col-md-4 btn-sm no-padding unit-add-btn" />
+        }
+    </div>
+    <div class="unit-name no-padding">
+        <RadzenLabel Text="@Unit.UnitName" class="no-padding" />
+        @*<RadzenIcon Icon="add" @onclick="_=>OnMenuItemClick(null)"/>*@
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool ShowAdd { get; set; }
+    [Parameter]
+    public UnitData Unit { get; set; }
+    [Parameter]
+    public EventCallback<UnitData> OnAddClick { get; set; }
+    [Parameter]
+    public UnitNickNames NickNames { get; set; }
+    [Parameter]
+    public bool IsAdmin { get; set; }
+
+    bool loading;
+    string title;
+
+    protected override void OnParametersSet()
+    {
+        title = NickNames?.ToString();
+    }
+
+    async Task Add()
+    {
+        loading = true;
+        await OnAddClick.InvokeAsync(Unit);
+        loading = false;
+    }
+
+    void ShowInfo()
+    {
+        //dialog.OpenUnitInfo(Unit.UnitId, Unit.UnitName);
+    }
+
+    void ShowContextMenuWithItems(MouseEventArgs args)
+    {
+        ContextMenuService.Open(args,
+            new List<ContextMenuItem> {
+                new ContextMenuItem(){ Text = "添加昵称", Value = 1 },
+                                     }, OnMenuItemClick);
+    }
+
+    void OnMenuItemClick(MenuItemEventArgs args)
+    {
+        ContextMenuService.Close();
+        //Console.WriteLine("aaaa");
+        //return;
+        ds.Open<AddNickName>("添加昵称", new Dictionary<string, object>
+        {
+            ["UnitId"] = Unit.UnitId,
+            ["NickNames"] = NickNames,
+            ["IsAdmin"] = IsAdmin,
+        });
+    }
+}

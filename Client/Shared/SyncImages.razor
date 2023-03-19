@@ -1,0 +1,101 @@
+﻿@inject NotificationService notify
+@inject HttpClient hc
+
+<div class="d-flex">
+    <div class="f-1">
+        <RadzenTextArea Rows="5" @bind-Value="ids" Style="width:100%;height:100%"
+                        Placeholder="@ph">
+
+        </RadzenTextArea>
+    </div>
+    <div class="d-flex flex-column align-items-center justify-content-center" style="margin-bottom:-10px">
+        <div>
+            <RadzenCheckBox @bind-Value="syncVt" />
+            <RadzenLabel Text="仅VT" />
+        </div>
+        @foreach (var kv in imageTypes)
+        {
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="@kv.Value"
+                      Click="@((args)=> SyncImage(kv.Key))" Disabled="@loading" Style="margin:0 0 10px 10px" />
+        }
+    </div>
+</div>
+<div class="d-flex align-items-center" style="margin-top:10px">
+    <RadzenLabel Text="Prefix" />
+    <RadzenTextBox @bind-Value="prefix" />
+    <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="复制图片"
+                  Click="@CopyImage" Disabled="@loading" Style="margin-left: 10px" />
+</div>
+
+@code {
+    Dictionary<string, string> imageTypes = new Dictionary<string, string>
+        {
+            ["UnitIcon"] = "角色图标",
+            ["EquipmentIcon"] = "装备图标",
+            ["UniqueEquipmentIcon"] = "专武图标",
+            ["ItemIcon"] = "道具图标",
+            ["SkillIcon"] = "技能图标",
+            //["PlateIcon"] = "角色卡面",
+            ["Card"] = "完整卡面"
+        };
+    Dictionary<string, string> imagePrefix = new()
+        {
+            ["UnitIcon"] = "icon/unit/",
+            ["EquipmentIcon"] = "icon/equipment/",
+            ["UniqueEquipmentIcon"] = "icon/equipment/",
+            ["ItemIcon"] = "icon/item/",
+            ["SkillIcon"] = "icon/skill/",
+            ["PlateIcon"] = "icon/plate/",
+            ["Card"] = "card/full/"
+        };
+    bool loading = false;
+    string ids;
+    string prefix = "icon/unit/";
+    string ph = "同步: 图片Id，一行一个\r\n复制: 源图片Id 新图片Id...";
+    bool syncVt;
+
+    async Task SyncImage(string type)
+    {
+        try
+        {
+            loading = true;
+            var args = ids?.Replace('\n', '|').Replace('\r', '|');
+            if (syncVt)
+            {
+                var imgs = args.Split('|').Select(id => imagePrefix[type] + id + ".webp").ToArray();
+                var resp = await hc.PostAsJsonAsync($"https://files.satroki.tech/api/Image/SyncImages", imgs);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var cnt = await resp.ReadAsAsync<int>();
+                    notify.Notify(NotificationSeverity.Success, $"同步{imageTypes[type]}-VT: {cnt}");
+                }
+            }
+            else
+            {
+                var cnt = await hc.GetFromJsonAsync<int[]>($"/api/Manage/Sync{type}?ids={args}");
+                notify.Notify(NotificationSeverity.Success, $"同步{imageTypes[type]}: {cnt[0]}, {cnt[1]}");
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    async Task CopyImage()
+    {
+        try
+        {
+            loading = true;
+            var args = ids.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToArray()).ToList();
+            var resp = await hc.PostAsJsonAsync($"/api/Manage/CopyImage?prefix={prefix}", args);
+            var cnt = await resp.ReadAsAsync<int[]>();
+            notify.Notify(NotificationSeverity.Success, $"复制图片: {cnt[0]}, {cnt[1]}");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

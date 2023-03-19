@@ -1,0 +1,289 @@
+﻿@page "/"
+@inject ApiService api
+@inject ILocalStorageService storage
+@inject DialogService dialog
+@inject NotificationService ns
+@inject NavigationManager nav
+@attribute [Authorize]
+@implements IDisposable
+@inject ArmoryService arm
+
+<RadzenCard Style="position:relative">
+    <div class="row sticky-header">
+        <BoxFilter FilterRecord="fr" FilterChanged="@FilterChanged" StatusSorterChanged="StatusSorterChanged" />
+        <div class="d-flex align-items-center">
+            <RadzenCheckBox TValue="bool" Value="multiMode" Style="margin-left:10px" Change="ModeChange" />
+            <RadzenLabel Text="多选" Style="margin:0 5px 0 5px" />
+            <RadzenCheckBox TValue="bool" Value="selectAll" Style="margin-left:10px" Change="SelectAllChange" />
+            <RadzenLabel Text="全选" Style="margin:0 10px 0 5px" />
+            <RadzenButton Text="编辑" Click="@MultiEdit" hidden="@(!multiMode)" />
+            <RadzenButton Icon="clear" Click="@MultiDel" hidden="@(!multiMode)" Style="margin-left:5px"
+                          ButtonStyle="ButtonStyle.Danger" />
+        </div>
+        <div class="f-1" style="text-align:right">
+            <RadzenSplitButton Click="EquipClick" Text="装备计算">
+                <ChildContent>
+                    <RadzenSplitButtonItem Text="计算全部" Value="all" />
+                    <RadzenSplitButtonItem Text="计算已选" Value="sel" />
+                </ChildContent>
+            </RadzenSplitButton>
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="分组" Click="@ShowGroup" Style="padding:0 16px" />
+            <RadzenButton Text="分享" ButtonStyle="ButtonStyle.Info" Click="@ShareClick" Style="padding:0 16px" />
+            <RadzenButton ButtonStyle="ButtonStyle.Info" Text="导出" Click="@Export" Style="padding:0 16px" />
+        </div>
+    </div>
+    <div>
+        @if (box != null)
+        {
+            <div class="row box-div">
+                @foreach (var l in box)
+                {
+                    <BoxUnit Line="l" AllowEdit="true" SelectMode="@multiMode" SelectedChanged="UnitSelectedChanged"
+                     ShowStock="@showStock" StockChanged="@ChangeStock" />
+                }
+                <div class="box-unit d-f-c" style="cursor:pointer" @onclick="AddUnit">
+                    <i class="rzi" style="font-size:128px;color:#adadad;">add</i>
+                </div>
+            </div>
+        }
+        else
+        {
+            <ProgressRing />
+        }
+    </div>
+</RadzenCard>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    LineFilterRecord fr = new LineFilterRecord();
+    bool multiMode = false;
+    bool selectAll = false;
+    bool showStock = false;
+    IEnumerable<UserBoxLine> box;
+    List<UserBoxLine> rawBox;
+    string lastStatusKey;
+
+    protected override void OnInitialized()
+    {
+        api.BoxChanged += BoxChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var s = await authenticationStateTask;
+        if (!s.User.Identity.IsAuthenticated)
+            return;
+        await api.InitSettings();
+        fr = await storage.GetFilterRecord(fr, Server);
+        await api.GetEquipmentStatusSetAsync();
+        await api.GetUserBox(Server);
+        await GetBox();
+        if (api.Settings.ShowEquipsStock)
+        {
+            await arm.InitUserStockDict(Server);
+            await api.GetEquipmentCraftsAsync(Server);
+            showStock = api.Settings.ShowEquipsStock;
+        }
+        if (api.Settings.AutoStatusCalc)
+            _ = api.GetStatusCalculator(Server);
+    }
+
+    async Task GetBox()
+    {
+        try
+        {
+            rawBox = await api.GetUserBox(Server);
+            fr.Groups = api.GetBoxGroupRecords();
+            box = fr.SetFiltersAndOrder(rawBox);
+            await StatusSorterChanged(lastStatusKey);
+        }
+        catch { }
+    }
+
+    void ChangeStock()
+    {
+        if (showStock)
+            StateHasChanged();
+    }
+
+    async void BoxChanged()
+    {
+        await GetBox();
+        StateHasChanged();
+    }
+
+    async Task FilterChanged()
+    {
+        await storage.SaveFilterRecord(fr, Server);
+        BoxChanged();
+    }
+
+    async Task MultiEdit()
+    {
+        var lines = box.Where(b => b.Selected).ToList();
+        if (lines.IsNullOrEmpty())
+            return;
+        var line = new MultiBoxLine(lines, Server);
+        arm.StartTrackBoxLines(lines);
+        var nl = await dialog.OpenAsync<BoxUnitEdit>(line.UnitName,
+               new Dictionary<string, object> { ["Line"] = line },
+               new DialogOptions { Width = "550px" });
+        if (nl is BoxEditModel bem && bem.Lines != null)
+        {
+            await arm.StopTrackBoxLines(bem.Lines, bem.NoConsume);
+            ChangeStock();
+        }
+    }
+
+    async Task MultiDel()
+    {
+        var lines = box.Where(b => b.Selected).ToList();
+        if (lines.IsNullOrEmpty())
+            return;
+        var names = string.Join("，", lines.Select(l => l.UnitName));
+        var r = await dialog.OpenConfirmAsync("确认删除？", names);
+        if (r)
+        {
+            await api.DeleteUserBoxLines(lines.Select(l => l.Id), Server);
+        }
+    }
+
+    public void Dispose()
+    {
+        api.BoxChanged -= BoxChanged;
+    }
+
+    async Task ShareClick()
+    {
+        var link = await api.GetShareLink(Server);
+        var url = $"{nav.BaseUri}box/{link}";
+        dialog.Open<ShareLink>("Box链接", new Dictionary<string, object> { ["Url"] = url }, new DialogOptions { Width = "680px" });
+    }
+
+    async Task EquipClick(RadzenSplitButtonItem item)
+    {
+        IEnumerable<UserBoxLine> b;
+        if (item == null)
+        {
+            if (multiMode && box.Any(l => l.Selected))
+                b = box.Where(l => l.Selected);
+            else
+                b = box;
+        }
+        else
+        {
+            switch (item.Value)
+            {
+                case "all":
+                    b = await api.GetUserBox(Server);
+                    break;
+                case "sel":
+                    b = box.Where(l => l.Selected);
+                    break;
+                default:
+                    return;
+            }
+        }
+        if (b.Any() || api.Settings.EnableExtraStock)
+        {
+            await dialog.OpenAsync<EquipmentGap>("装备需求", new Dictionary<string, object> { ["Box"] = b }, new DialogOptions { Width = "80vw" });
+            ChangeStock();
+        }
+    }
+
+    async Task Export()
+    {
+        await api.ExportUserBox(box);
+    }
+
+    void ModeChange(bool v)
+    {
+        multiMode = v;
+        if (!multiMode)
+            selectAll = false;
+    }
+
+    void SelectAllChange(bool all)
+    {
+        selectAll = all;
+        if (all)
+        {
+            multiMode = true;
+            foreach (var b in box)
+            {
+                b.Selected = true;
+            }
+        }
+        else
+        {
+            foreach (var b in box)
+            {
+                b.Selected = false;
+            }
+        }
+    }
+
+    void UnitSelectedChanged(bool s)
+    {
+        if (s)
+        {
+            selectAll = box.All(b => b.Selected);
+        }
+        else
+        {
+            selectAll = false;
+        }
+    }
+
+    async Task ShowGroup()
+    {
+        var r = await dialog.OpenAsync<GroupBoxUnit>("角色分组", new Dictionary<string, object>
+            {
+                ["Lines"] = box.ToList(),
+                ["Groups"] = fr.Groups
+            }, new DialogOptions { Width = "800px" });
+    }
+
+    async Task AddUnit()
+    {
+        var units = await dialog.OpenUnitPickerAsync(rawBox?.Select(r => r.UnitId).ToList());
+        if (!units.IsNullOrEmpty())
+        {
+            IEnumerable<GroupRecord> grs = null;
+            if (!fr.Groups.IsNullOrEmpty() && !fr.GroupIds.IsNullOrEmpty())
+                grs = fr.Groups.Where(g => fr.GroupIds.Contains(g.Id));
+            var c = await api.AddUserBoxLines(units, Server, grs);
+            if (c > 0)
+            {
+                ns.Notify(NotificationSeverity.Success, $"成功添加 {c} 条");
+                BoxChanged();
+            }
+        }
+    }
+
+    async Task StatusSorterChanged(string key)
+    {
+        lastStatusKey = key;
+        if (!key.IsNullOrEmpty() && !box.IsNullOrEmpty())
+        {
+            var temp = box;
+            box = null;
+            var calculator = await api.GetStatusCalculator(Server);
+            var (mr, ms, ma) = await api.GetLimitParamAsync(Server);
+            foreach (var b in temp)
+            {
+                if (b.Status == null)
+                {
+                    var sd = await api.GetUnitSourceDataAsync(b.UnitId);
+                    var us = calculator.CalcUnitStatus(b, sd, rawBox, mr, ms, ma);
+                    b.Status = us.StatusDict;
+                }
+            }
+            box = temp.OrderByDescending(b => b.Status[key]);
+        }
+    }
+}

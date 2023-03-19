@@ -1,0 +1,148 @@
+﻿@inject ArmoryService arm
+@inject NotificationService nty
+@inject DialogService dialog
+@inject ApiService api
+
+<div class="d-flex" style="margin-bottom:5px">
+    <RadzenLabel Text="识别装等: " Style="width: 124px; text-align: center; margin-right: 20px;" />
+    <RadzenRadioButtonList @bind-Value=@type TValue="int">
+        <Items>
+            <RadzenRadioButtonListItem Text="白" Value="1" />
+            <RadzenRadioButtonListItem Text="铜" Value="2" />
+            <RadzenRadioButtonListItem Text="银" Value="3" />
+            <RadzenRadioButtonListItem Text="金" Value="4" />
+            <RadzenRadioButtonListItem Text="紫" Value="5" />
+            <RadzenRadioButtonListItem Text="红" Value="6" />
+            <RadzenRadioButtonListItem Text="绿" Value="7" />
+            <RadzenRadioButtonListItem Text="橙" Value="8" />
+        </Items>
+    </RadzenRadioButtonList>
+</div>
+<div class="d-flex align-items-center">
+    <RadzenUpload Multiple="true" Accept="image/*" Url="@uploadUrl" ChooseText="选取图片" Progress="UploadProgress"
+                  Complete="UploadComplete" Error="UploadError" title="识别装备库存截图" />
+    <RadzenProgressBar Value="@progress" Style="flex:1;margin-left:20px" />
+</div>
+<div style="min-height:100px; max-height: calc(100vh - 240px);overflow-y:auto">
+    @if (loading)
+    {
+        <div class="text-center">
+            <ProgressRing />
+        </div>
+    }
+    else
+    {
+        @if (!result.IsNullOrEmpty())
+        {
+            <div class="d-flex flex-row flex-wrap">
+                @foreach (var (eid, num) in result.OrderBy(kv => kv.Key < 140000).ThenByDescending(kv => kv.Key % 10000))
+                {
+                    <div class="equip-div" title="@statusSet.TryGetName(eid,Server)">
+                        <img src="@eid.GetEquipIcon()" />
+                        <div class="d-flex flex-row">
+                            <NumInput TValue="int" Min="0" Value="num"
+                          Change="@(v => StockChanged(eid,v))"
+                          Style="width:96px;margin-top:5px" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center" style="margin-top:20px;opacity:0.5">
+                <p style="white-space:pre;margin-bottom:5px">@note</p>
+                <a href="@Constants.ToolUrl" target="_blank">下载地址，提取码：@Constants.ToolUrlCode</a>
+            </div>
+        }
+    }
+</div>
+<div class="row justify-content-center">
+    <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="保存" Click="Submit" Style="margin-left:10px" />
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="保存并继续" Style="margin-left:10px"
+                      Click="AddAndContinue" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    int type = 4;
+    string uploadUrl => $"https://pcrir.satroki.tech:21551/api/Items/Recognition/{type}";
+    int progress;
+    Dictionary<int, int> result;
+    bool loading;
+    List<SimpleEquipmentData> equipments;
+    bool flag;
+    EquipmentStatusSet statusSet;
+    string note = "服务端单次仅识别一种装等，每张图识别上限15个\n完整功能请使用桌面应用";
+
+    protected override async Task OnInitializedAsync()
+    {
+        statusSet = await api.GetEquipmentStatusSetAsync();
+    }
+
+    void UploadComplete(UploadCompleteEventArgs args)
+    {
+        loading = false;
+        var json = args.JsonResponse.RootElement.GetRawText();
+        if (json.IsNullOrEmpty())
+        {
+            nty.Notify(NotificationSeverity.Error, "识别失败");
+            return;
+        }
+        var arr = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json);
+        if (arr.IsNullOrEmpty())
+        {
+            nty.Notify(NotificationSeverity.Error, "识别失败");
+            return;
+        }
+        result = arr.GetStockData(out _);
+    }
+
+    void UploadError(UploadErrorEventArgs e)
+    {
+        loading = false;
+        nty.Notify(NotificationSeverity.Error, "上传失败");
+    }
+
+    void UploadProgress(UploadProgressArgs args)
+    {
+        progress = args.Progress;
+        loading = progress == 100;
+        StateHasChanged();
+    }
+
+    void StockChanged(int eid, int v)
+    {
+        result[eid] = v;
+    }
+
+    async Task Submit()
+    {
+        if (!result.IsNullOrEmpty())
+        {
+            await arm.UpdateStockNum(result, Server, null);
+            dialog.Close(true);
+        }
+    }
+
+    async Task AddAndContinue()
+    {
+        if (!result.IsNullOrEmpty())
+        {
+            await arm.UpdateStockNum(result, Server, null);
+            result = null;
+            flag = true;
+            progress = 0;
+        }
+    }
+
+    void Cancel()
+    {
+        dialog.Close(flag);
+    }
+}

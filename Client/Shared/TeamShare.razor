@@ -1,0 +1,104 @@
+﻿@inject DialogService ds
+@inject ApiService api
+@inject NotificationService ns
+
+@if (Team != null)
+{
+    <div>
+        <div class="d-flex align-items-center" style="margin-bottom:10px">
+            <RadzenLabel Text="名称:" />
+            <RadzenTextBox @bind-Value="Team.Name" Style="margin:0 10px 0 5px" />
+            <RadzenLabel Text="Auto:" />
+            <RadzenCheckBox @bind-Value="Team.Auto" Style="margin:0 10px 0 5px" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-bottom:10px">
+            <RadzenLabel Text="阶段:" />
+            <RadzenDropDown TValue="string" @bind-Value="Team.Phase" AllowClear="false" Data="phases" Style="margin:0 10px 0 5px;width:60px" />
+            <RadzenLabel Text="Boss:" />
+            <RadzenDropDown TValue="int" @bind-Value="Team.Boss" AllowClear="false" Data="bosses" Style="margin:0 10px 0 5px;width:60px" />
+            <RadzenLabel Text="伤害（万）:" />
+            <RadzenNumeric @bind-Value="Team.Damage" TValue="double" Min="0" Style="margin:0 10px 0 5px;width:100px" />
+            <RadzenLabel Text="分数×" />
+            <RadzenNumeric @bind-Value="Team.PointRate" TValue="double" Min="1" Step="0.1" Max="5" Style="margin:0 10px 0 5px;width:80px" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-bottom:10px">
+            <RadzenLabel Text="备注:" />
+            <RadzenTextBox @bind-Value="Team.Note" Style="margin:0 10px 0 5px;flex:1" />
+        </div>
+        <div class="d-flex align-items-center" style="margin-bottom:10px">
+            @foreach (var u in Team.Units)
+            {
+                <img src="@u.Icon.GetUnitIcon('3')" style="width:64px;height:64px;margin:2px" title="@u.UnitName" />
+            }
+        </div>
+        @if (!Team.Links.IsNullOrEmpty())
+        {
+            <div class="d-flex flex-wrap" style="margin:-5px 0 5px 0">
+                @foreach (var linkArr in Team.Links)
+                {
+                    <a href="@linkArr[1]" target="_blank" style="margin-right:10px">@linkArr[0]</a>
+                }
+            </div>
+        }
+        <div>
+            <RadzenTextArea @bind-Value="Team.Axis" Placeholder="轴" Style="height:350px; width:100%" />
+        </div>
+    </div>
+    <p class="red">@info</p>
+    <div class="d-flex align-items-center justify-content-center">
+        <RadzenButton ButtonStyle=" ButtonStyle.Primary" Text="分享" Click="Share" Style="padding:0 16px" Disabled="@(Team.Id>0)" />
+        @if (ShowSave)
+        {
+            <RadzenButton ButtonStyle=" ButtonStyle.Info" Text="仅保存" Click="Save" Style="padding:0 16px;margin-left: 10px" />
+        }
+        <RadzenButton ButtonStyle=" ButtonStyle.Light" Text="取消" Click="Cancel" Style="padding:0 16px;margin-left: 10px" />
+    </div>
+}
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [Parameter]
+    public ClanBattleTeam Team { get; set; }
+    [Parameter]
+    public bool ShowSave { get; set; } = true;
+
+    List<string> phases = new List<string> { "A", "B", "C", "D", "E", "F" };
+    List<int> bosses = new List<int> { 1, 2, 3, 4, 5, 6 };
+    string info;
+    protected override void OnParametersSet()
+    {
+        Team?.ParseBoss();
+    }
+
+    async Task Share()
+    {
+        info = string.Empty;
+        if (Team.Name.IsNullOrEmpty())
+        {
+            info = "请输入名称";
+            return;
+        }
+        var id = await api.ShareClanBattleTeam(Team);
+        if (id > 0)
+        {
+            ns.Notify(NotificationSeverity.Success, "分享成功");
+            Team.Id = id;
+            ds.Close(Team);
+        }
+        else
+        {
+            ns.Notify(NotificationSeverity.Error, "分享失败");
+        }
+    }
+
+    void Save()
+    {
+        ds.Close(Team);
+    }
+
+    void Cancel()
+    {
+        ds.Close();
+    }
+}

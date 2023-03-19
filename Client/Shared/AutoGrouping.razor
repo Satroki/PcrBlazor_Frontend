@@ -1,0 +1,495 @@
+﻿@page "/group"
+
+@inject DbService db
+@inject ApiService api
+@inject DialogService ds
+@inject NotificationService ns
+
+<RadzenCard Style="position:relative;padding-right:10px;padding-left:10px">
+    <div class="d-flex dashed-b-5">
+        <div class="d-flex align-items-center f-1">
+            <RadzenButton ButtonStyle=" ButtonStyle.Primary" Text="计算" Click="Calc" Style="padding:0 16px" />
+            <RadzenLabel Text="结果限制：" Style="margin:0 5px 0 10px" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="gs.Limit" Style="width:60px" />
+            <RadzenLabel Text="角色限制" Style="margin:0 0 0 10px" />
+            <RadzenIcon Icon="settings" @onclick="ShowSettings" Style="cursor:pointer;align-self:center;margin-left:5px" />
+            <span>：</span>
+            <RadzenLabel Text="@gs.ToString()" Style="margin:0 5px 0 0" />
+        </div>
+        <div class="d-flex align-items-center">
+            <RadzenButton ButtonStyle=" ButtonStyle.Primary" Text="导入" Click="Import" Style="padding:0 16px" />
+            <RadzenButton ButtonStyle=" ButtonStyle.Info" Text="导出" Click="Export" Style="padding:0 16px;margin:0 10px" />
+            <RadzenButton ButtonStyle=" ButtonStyle.Secondary" Text="查询" Click="Search" Style="padding:0 16px;margin-right:10px" />
+            <RadzenButton ButtonStyle=" ButtonStyle.Secondary" Text="作业网" Click="SearchDoc" Style="padding:0 16px;margin-right:10px" />
+            <RadzenButton ButtonStyle=" ButtonStyle.Danger" Text="清空" Click="Clear" Style="padding:0 16px" />
+        </div>
+    </div>
+    <div class="d-flex align-items-center dashed-b-5">
+        <RadzenLabel Text="按分数" Style="margin:0 5px 0 0" />
+        <RadzenCheckBox TValue="bool" @bind-Value="gs.PointMode" />
+        <RadzenLabel Text="附通用刀" Style="margin:0 5px 0 10px" title="计算结果额外添加多Boss通用刀型" />
+        <RadzenCheckBox TValue="bool" @bind-Value="gs.WithSame" />
+        <RadzenLabel Text="总刀数：" Style="margin:0 5px 0 10px" />
+        <RadzenNumeric Min="1" Max="3" TValue="int" @bind-Value="gs.TeamCnt" Style="width:50px" />
+        <RadzenLabel Text="法刀≤" Style="margin:0 5px 0 10px" />
+        <RadzenNumeric Min="0" Max="3" TValue="int" @bind-Value="gs.MagicLimit" Style="width:50px" />
+        <RadzenLabel Text="手动刀≤" Style="margin:0 5px 0 10px" />
+        <RadzenNumeric Min="0" Max="3" TValue="int" @bind-Value="gs.MLimit" Style="width:50px" />
+        <p style="margin:0 10px;flex:1;color:orangered;text-align:center;cursor:pointer" title="点击清空固定队" @onclick="ClearCheck">@GetCheckedMsg()</p>
+        <p @onclick="CollapseAll" Style="margin:0 10px" class="p-btn">折叠</p>
+        <p @onclick="ExpandAll" class="p-btn">展开</p>
+    </div>
+
+    <div class="d-flex">
+        <div class="f-1 sc-div" style="min-width:380px">
+            @if (result != null)
+            {
+                <div class="d-flex flex-wrap">
+                    @if (result.IsNullOrEmpty())
+                    {
+                        <p>无结果</p>
+                    }
+                    @foreach (var tg in result)
+                    {
+                        <TeamGroup Group="@tg" ReadOnly="true" AllowCheck="true" TeamChecked="TeamChecked" />
+                    }
+                </div>
+            }
+            else if (loading)
+            {
+                <ProgressRing />
+            }
+        </div>
+        <div class="sc-div" style="margin-left:15px;width:750px">
+            @if (cbTeamGroup != null)
+            {
+                <div>
+                    @foreach (var tg in cbTeamGroup)
+                    {
+                        <div class="cbtg-div">
+                            <div class="d-flex align-items-center" style="margin:5px">
+                                <RadzenCheckBox TValue="bool" @bind-Value="tg.Selected" />
+                                <p style="margin:0 0 0 5px;font-weight:bold;font-size:1.125rem;">@tg.Name</p>
+                                <p style="margin:0 0 0 10px">×</p>
+                                <RadzenNumeric @bind-Value="tg.Rate" TValue="double" Min="1" Step="0.1" Max="5"
+                                       Style="margin:0 10px 0 5px;width:60px;padding:2px 5px;height:2rem"
+                                       Change="async _=>await RateChange(tg)" />
+
+                                <p style="margin:0 0 0 15px">限刀</p>
+                                <RadzenNumeric @bind-Value="tg.MinLimit" TValue="int" Max="3" Min="0"
+                                       Style="margin:0 5px;width:50px;padding:2px 5px;height:2rem" />
+                                <p style="margin:0 3px">-</p>
+                                <RadzenNumeric @bind-Value="tg.Limit" TValue="int?" Max="3" Min="0"
+                                       Style="margin:0 5px;width:50px;padding:2px 5px;height:2rem" />
+
+                                <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="补偿" TValue="string"
+                                        Data="@bosses" @bind-Value="tg.Return"
+                                        Style="width:95px;margin-left:15px" />
+
+                                <RadzenCheckBox TValue="bool" @bind-Value="tg.NoSupporter" Style="margin-left:15px" />
+                                <p style="margin:0 0 0 5px">不借人</p>
+
+                                <div class="f-1"></div>
+
+                                <i class="rzi share-tg-i" @onclick="_=>DelGroup(tg)" Style="margin-right:10px;color:palevioletred">delete</i>
+                                <i class="rzi share-tg-i" @onclick=" _=>Share(tg)" style="margin-right:10px;">share</i>
+                                @if (tg.IsVisible)
+                                {
+                                    <i class="rzi share-tg-i" @onclick="_=>tg.IsVisible=false">visibility</i>
+                                }
+                                else
+                                {
+                                    <i class="rzi share-tg-i" @onclick="_=>tg.IsVisible=true">visibility_off</i>
+                                }
+                            </div>
+                            @if (tg.IsVisible)
+                            {
+                                @foreach (var t in tg.Teams)
+                                {
+                                    <div class="cbt-div">
+                                        @if (!string.Equals(t.Name, t.PhaseName, StringComparison.OrdinalIgnoreCase) || !t.Note.IsNullOrEmpty())
+                                        {
+                                            <div class="mteam-tdiv" style="margin-left:20px">
+                                                <p class="team-name-p">@t.Name<span>@t.Note</span></p>
+                                            </div>
+                                        }
+                                        <div class="d-flex align-items-center">
+                                            <RadzenCheckBox @bind-Value="t.Enabled" title="是否启用" />
+                                            <div class="d-flex">
+                                                @foreach (var u in t.Units)
+                                                {
+                                                    <div title="@u.UnitName" class="@(t.Supporter==u.UnitId? "cbt-div-tc":"cbt-div-t")" @onclick="_=>CheckSp(t,u.UnitId)">
+                                                        <img src="@u.Icon.GetUnitIcon('3')" style="width:64px;height:64px" />
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div style="margin:0 0 0 10px">
+                                                <p style="margin:0">@t.Damage 万</p>
+                                                <div class="d-flex align-items-center">
+                                                    @if (t.Auto || t.Tail)
+                                                    {
+                                                        <p style="color:dodgerblue;font-size:0.875rem;margin:5px 5px 0 0">@t.TypeDesp</p>
+                                                    }
+                                                    @if (!t.Axis.IsNullOrEmpty() || !t.Links.IsNullOrEmpty())
+                                                    {
+                                                        <i class="rzi" title="轴/链接" style="cursor:pointer;color:dodgerblue;margin:5px 0 0 0" @onclick="_=>ShowAxis(t)">list</i>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div style="flex:1;text-align:right">
+                                                <RadzenCheckBox TValue="bool" @bind-Value="t.Checked" title="是否已使用" Style="margin:0 5px 0 5px" />
+                                                <RadzenButton Icon="remove" ButtonStyle="ButtonStyle.Danger" Click="_=>DelTeam(t)" Style="margin:0 5px 0 5px" />
+                                                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Secondary" Click="_=>Share(t)" Style="margin:0 0 0 0" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</RadzenCard>
+
+<style>
+    .sc-div {
+        overflow-y: auto;
+        max-height: calc(100vh - 215px);
+    }
+
+    .cbtg-div {
+        padding: 5px;
+        margin: 5px 0;
+        border: 1px solid #dddddd;
+        border-radius: 5px;
+    }
+
+    .cbt-div {
+        padding: 5px;
+        border-top: 1px solid #dddddd;
+    }
+
+    .mteam-div {
+        margin: 5px 5px 0 5px;
+    }
+
+    .share-tg-i {
+        cursor: pointer;
+        color: dodgerblue;
+    }
+
+    .cbt-div-tc {
+        margin: 0px;
+        border: 2px solid red;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .cbt-div-t {
+        margin: 2px;
+        cursor: pointer;
+    }
+
+    .team-name-p {
+        max-width: 330px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow-x: hidden;
+    }
+
+    .p-btn {
+        color: dodgerblue;
+        cursor: pointer;
+        margin: 0;
+    }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<UserBoxLine> box;
+    List<UnitData> units;
+    List<ClanBattleTeam> cbTeams = new List<ClanBattleTeam>();
+    PcrDataRecord<ClanBattleTeam> dr;
+    List<ClanBattleTeamGroup> cbTeamGroup;
+    IEnumerable<UserTeamGroup> result;
+    GroupingSettings gs = new();
+    List<string> bosses = new();
+    bool loading;
+    protected override async Task OnInitializedAsync()
+    {
+        gs = await api.GetGroupingSettings(Server) ?? new();
+        dr = await db.ClanBattleTeams.GetRecordAsync(Server);
+        if (dr != null)
+            cbTeams = dr.Datas;
+        box = await api.GetUserBox(Server);
+        units = await api.GetAllUnitDatasAsync(Server);
+        api.SetUnits(cbTeams, units);
+        cbTeamGroup = await api.GetLocalTeamGroups(Server);
+        GroupTeams();
+    }
+
+    void GroupTeams()
+    {
+        var gs = cbTeamGroup.IsNullOrEmpty() ? null
+            : cbTeamGroup.ToDictionary(g => g.Name, g => new ClanBattleTeamGroup(g));
+
+        cbTeamGroup = cbTeams.GroupBy(t => $"{t.Phase}{t.Boss}").Select(g => new ClanBattleTeamGroup(g)).OrderBy(g => g.Name).ToList();
+        if (gs != null)
+        {
+            foreach (var tg in cbTeamGroup)
+            {
+                if (gs.TryGetValue(tg.Name, out var tuple))
+                {
+                    tg.Selected = tuple.Selected;
+                    tg.Limit = tuple.Limit;
+                    tg.MinLimit = tuple.MinLimit;
+                    tg.NoSupporter = tuple.NoSupporter;
+                    tg.IsVisible = tuple.IsVisible;
+                    tg.Return = tuple.Return;
+                }
+            }
+        }
+        bosses = cbTeamGroup.Select(g => g.Name).ToList();
+    }
+
+    async Task RateChange(ClanBattleTeamGroup tg)
+    {
+        foreach (var t in tg.Teams)
+        {
+            t.PointRate = tg.Rate;
+        }
+        await Save(cbTeams);
+    }
+
+    async Task Import()
+    {
+        var d = await ds.OpenAsync<ImportTeam>("导入队伍");
+        if (d is List<ClanBattleTeam> tms)
+            await ImportTeams(tms);
+    }
+
+    async Task ImportTeams(List<ClanBattleTeam> tms)
+    {
+        if (!tms.IsNullOrEmpty())
+        {
+            api.SetUnits(tms, units);
+            foreach (var tm in tms)
+            {
+                var oi = cbTeams.FindIndex(t => t.TeamEquals(tm));
+                if (oi < 0)
+                {
+                    cbTeams.Add(tm);
+                }
+                else
+                {
+                    cbTeams[oi] = tm;
+                }
+            }
+            await Save(cbTeams);
+            GroupTeams();
+        }
+    }
+
+    async Task Export()
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var tg in cbTeamGroup)
+        {
+            sb.AppendLine($"{tg.Name} {tg.Rate}");
+            foreach (var t in tg.Teams)
+            {
+                foreach (var u in t.Units)
+                {
+                    sb.Append(u.UnitName).Append(" ");
+                }
+                sb.Append(t.Damage).Append(" ");
+                if (t.Name != tg.Name)
+                    sb.Append($"[N:{t.Name}]");
+                if (t.Auto)
+                    sb.Append("[Auto]");
+                sb.Append(' ');
+                sb.AppendLine(t.Note);
+            }
+        }
+        await api.SaveStringAsFile("队伍导出.txt", sb.ToString());
+    }
+
+    async Task Clear()
+    {
+        if (await ds.OpenConfirmAsync("确认清空？", "清空作业库"))
+        {
+            cbTeams.Clear();
+            cbTeamGroup.Clear();
+            await Save(new());
+        }
+    }
+
+    async Task Save(List<ClanBattleTeam> ts)
+    {
+        dr = await db.ClanBattleTeams.AddOrUpdateRecord(Server, ts, dr == null);
+        await api.SaveLocalTeamGroups(cbTeamGroup, Server);
+    }
+
+    async Task DelTeam(ClanBattleTeam t)
+    {
+        cbTeams.Remove(t);
+        GroupTeams();
+        await Save(cbTeams);
+    }
+
+    async Task DelGroup(ClanBattleTeamGroup tg)
+    {
+        foreach (var t in tg.Teams)
+        {
+            cbTeams.Remove(t);
+        }
+        cbTeamGroup.Remove(tg);
+        await Save(cbTeams);
+    }
+
+    async Task Share(ClanBattleTeam t)
+    {
+        var r = await ds.OpenAsync<TeamShare>("分享队伍", new Dictionary<string, object> { ["Team"] = t });
+        if (r is ClanBattleTeam)
+        {
+            await Save(cbTeams);
+            GroupTeams();
+        }
+    }
+
+    async Task Share(ClanBattleTeamGroup tg)
+    {
+        var r = await ds.OpenConfirmAsync("确认分享？", $"共 {tg.Teams.Count} 支队伍");
+        if (r)
+        {
+            foreach (var t in tg.Teams)
+            {
+                if (t.ParseBoss())
+                    t.Id = await api.ShareClanBattleTeam(t);
+            }
+            ns.Notify(NotificationSeverity.Success, "分享成功");
+            await Save(cbTeams);
+            GroupTeams();
+        }
+    }
+
+    async Task SearchDoc()
+    {
+        await SearchTeams(true);
+    }
+
+    async Task Search()
+    {
+        await SearchTeams(false);
+    }
+
+    async Task SearchTeams(bool doc)
+    {
+        var r = await ds.OpenAsync<TeamSearch>(doc ? "作业网导入" : "作业查询", new Dictionary<string, object> { ["DocMode"] = doc },
+        new DialogOptions { Width = "610px" });
+        if (r is List<ClanBattleTeam> tms)
+        {
+            await ImportTeams(tms);
+        }
+    }
+
+    void ShowAxis(ClanBattleTeam t)
+    {
+        ds.Open<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["ReadOnly"] = true, ["Links"] = t.Links });
+    }
+
+    async Task ShowSettings()
+    {
+        await ds.OpenAsync<AutoGroupingSettings>("角色限制", new()
+            {
+                ["Settings"] = gs
+            });
+    }
+
+    async Task Calc()
+    {
+        try
+        {
+            if (gs.Limit <= 0)
+                return;
+            if (cbTeams.Count(t => t.Checked) >= gs.TeamCnt)
+                return;
+            loading = true;
+            result = null;
+            await Task.Yield();
+            var boxIds = box.Where(u => u.Promotion >= gs.Rank && u.Rarity >= gs.Rarity && u.Level >= gs.Level).Select(b => b.UnitId);
+            if (!gs.GroupIds.IsNullOrEmpty())
+            {
+                var ug = api.GetBoxGroupRecords();
+                var lineIds = ug.Where(g => gs.GroupIds.Contains(g.Id)).SelectMany(g => g.LineIds).Distinct().ToList();
+                if (lineIds.Any())
+                {
+                    var uids = box.Where(l => lineIds.Contains(l.Id)).Select(l => l.UnitId).ToList();
+                    boxIds = boxIds.Intersect(uids);
+                }
+            }
+            if (gs.ExceptUnits.Any())
+            {
+                boxIds = boxIds.Except(gs.ExceptUnits);
+            }
+            result = await api.CalcTeamGroupingAsync(cbTeamGroup, boxIds.ToList(), Server, gs);
+            await api.SaveLocalTeamGroups(cbTeamGroup, Server);
+            await api.SaveGroupingSettings(gs, Server);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    void ExpandAll()
+    {
+        cbTeamGroup?.ForEach(t => t.IsVisible = true);
+    }
+
+    void CollapseAll()
+    {
+        cbTeamGroup?.ForEach(t => t.IsVisible = false);
+    }
+
+    void CheckSp(ClanBattleTeam t, int uid)
+    {
+        if (t.Supporter == uid)
+            t.Supporter = 0;
+        else
+            t.Supporter = uid;
+    }
+
+    void TeamChecked(UserTeam t)
+    {
+        var cbt = cbTeams?.FirstOrDefault(v => v.Id == t.CbTeamId);
+        if (cbt != null)
+        {
+            cbt.Checked = !cbt.Checked;
+            if (cbt.Checked && cbt.Supporter != t.SupporterId && t.SupporterId.HasValue)
+                CheckSp(cbt, t.SupporterId.Value);
+        }
+    }
+
+    void ClearCheck()
+    {
+        foreach (var cb in cbTeams)
+        {
+            cb.Checked = false;
+        }
+    }
+
+    string GetCheckedMsg()
+    {
+        var cnt = cbTeams.Count(t => t.Checked);
+        if (cnt > 0 && cnt < gs.TeamCnt)
+            return $"已固定 {cnt} 队";
+        if (cnt >= gs.TeamCnt)
+            return $"已固定 {gs.TeamCnt} 队以上，无法计算";
+        return string.Empty;
+    }
+}

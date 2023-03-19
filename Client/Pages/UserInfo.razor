@@ -1,0 +1,231 @@
+﻿@page "/user"
+@inject NavigationManager nav
+@inject DialogService dialogService
+@inject ApiService api
+@inject UserService us
+@inject NotificationService notify
+@inject DialogService ds
+
+<RadzenCard>
+    @if (mode == LoginPageMode.Info)
+    {
+        <div style="max-width:400px">
+            <RadzenFieldset Text="用户名">
+                <div class="d-flex align-items-center">
+                    <RadzenLabel Text="@user.UserName" Style="flex:1" />
+                    <a href="javascript:void(0)" @onclick="ChangePwd" style="align-self:flex-end" hidden="@user.NoPassword">修改密码</a>
+                </div>
+            </RadzenFieldset>
+            <RadzenFieldset Text="昵称（修改后重新登陆生效）">
+                <div class="d-flex align-items-center">
+                    <RadzenLabel Text="@(user.NickName ?? user.UserName)" Style="flex:1" />
+                    <a href="javascript:void(0)" @onclick="ChangeNickName" style="align-self:flex-end">修改</a>
+                </div>
+            </RadzenFieldset>
+            <RadzenFieldset Text="注册日期">
+                <RadzenLabel Text="@(user.CreateAt?.ToString("yyyy-MM-dd") ?? "未知")" />
+            </RadzenFieldset>
+            <RadzenFieldset Text="邮箱">
+                <div class="d-flex align-items-center">
+                    <RadzenLabel Text="@(user.Email ?? "未设置")" Style="flex:1" />
+                    <a href="javascript:void(0)" @onclick="ChangeEmail" style="align-self:flex-end" hidden="@user.NoPassword">修改</a>
+                </div>
+            </RadzenFieldset>
+            <RadzenFieldset Text="第三方登录">
+                <div class="d-flex align-items-center flex-wrap">
+                    @foreach (var (k, v) in otherLogin)
+                    {
+                        var binded = user.Logins.Contains(k);
+                        var text = binded ? $"已绑定{v}账号" : $"绑定{v}账号";
+                        <RadzenButton Text="@text" Disabled="binded" Click="async ()=>await Bind(k)" ButtonStyle="ButtonStyle.Secondary"
+                                      Style="margin:0 10px 10px 0;padding:0 10px" />
+                    }
+                </div>
+                <div class="d-flex align-items-center flex-wrap">
+                    @foreach (var (k, v) in otherLogin)
+                    {
+                        if (user.Logins.Contains(k))
+                        {
+                            <RadzenButton Text="@($"解绑{v}账号")" Click="async ()=>await UnBind(k)" ButtonStyle="ButtonStyle.Warning"
+                                          Style="margin:0 10px 10px 0;padding:0 10px" />
+                        }
+                    }
+                </div>
+            </RadzenFieldset>
+            <div class="d-flex align-items-center flex-wrap" style="margin-top:10px">
+                <RadzenButton Text="注销该账号" Click="DeleteUser" ButtonStyle="ButtonStyle.Danger"
+                              Style="margin:0 10px 10px 0;padding:0 10px" />
+            </div>
+        </div>
+    }
+    else if (mode != LoginPageMode.None)
+    {
+        <Login @ref="loginref" Model="@model" Submit="LoginAsync" ReturnUrl="@returnUrl" />
+    }
+</RadzenCard>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    bool registerMode = false;
+    string loginText = "登录";
+    string registerText = "注册";
+    string registerMessageText = "没有账号？注册新用户";
+    string token;
+    string returnUrl;
+    AccountModel model = new AccountModel();
+    Login loginref;
+    PcrUserModel user;
+    LoginPageMode mode = LoginPageMode.None;
+
+    Dictionary<string, string> otherLogin = new()
+    {
+        ["QQ"] = "QQ",
+        ["Microsoft"] = "微软",
+        ["GitHub"] = "GitHub"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var s = await authenticationStateTask;
+        if (s.User.Identity.IsAuthenticated)
+        {
+            user = await us.GetUserInfo();
+            mode = LoginPageMode.Info;
+        }
+        else
+        {
+            mode = LoginPageMode.Login;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uriBuilder = new UriBuilder(nav.Uri);
+        var q = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
+        var error = q["error"];
+        if (!error.IsNullOrEmpty())
+        {
+            notify.Notify(NotificationSeverity.Error, error);
+            nav.NavigateTo("/user");
+        }
+        returnUrl = q["returnUrl"];
+        token = q["token"];
+
+        if (!token.IsNullOrEmpty())
+        {
+            await us.Login(token);
+            if (!returnUrl.IsNullOrEmpty())
+            {
+                nav.NavigateTo(returnUrl);
+            }
+        }
+    }
+
+    async Task LoginAsync(LoginPageMode m)
+    {
+        if (m == LoginPageMode.Register)
+        {
+            var r = await us.Register(model);
+            if (!r.Successful)
+            {
+                notify.Notify(NotificationSeverity.Error, r.Error);
+            }
+            else
+            {
+                notify.Notify(NotificationSeverity.Success, "注册成功");
+                loginref.SwitchMode();
+            }
+        }
+        else
+        {
+            var r = await us.Login(model);
+            if (!r.Successful)
+            {
+                notify.Notify(NotificationSeverity.Error, r.Error);
+            }
+            else
+            {
+                notify.Notify(NotificationSeverity.Success, "登录成功");
+                nav.NavigateTo(returnUrl ?? "/");
+            }
+        }
+    }
+
+    async Task ChangePwd()
+    {
+        await ds.OpenAsync<LoginSetting>("修改密码", new Dictionary<string, object>
+        {
+            ["Mode"] = LoginPageMode.ChangePwd
+        });
+    }
+
+    async Task ChangeNickName()
+    {
+        var nn = await ds.OpenAsync<LoginSetting>("修改昵称", new Dictionary<string, object>
+        {
+            ["Mode"] = LoginPageMode.ChangeNickName
+        });
+        if (nn is string s && !s.IsNullOrEmpty())
+        {
+            user.NickName = s;
+        }
+    }
+
+    async Task ChangeEmail()
+    {
+        var em = await ds.OpenAsync<LoginSetting>("修改邮箱", new Dictionary<string, object>
+        {
+            ["Mode"] = LoginPageMode.ChangeEmail
+        });
+        if (em is string s && !s.IsNullOrEmpty())
+        {
+            user.Email = s;
+        }
+    }
+
+    async Task Bind(string k)
+    {
+        var token = await api.GetBindToken();
+        nav.NavigateTo($"/api/{k}-bind/{token}", true);
+    }
+
+    async Task UnBind(string p)
+    {
+        if (user.NoPassword && user.Logins.Count == 1)
+        {
+            notify.Notify(NotificationSeverity.Warning, "账号无其他登录方式，无法解绑");
+            return;
+        }
+        var c = await ds.OpenConfirmAsync("确认解绑？", "解绑后可用于创建新用户或绑定其他账号");
+        if (!c)
+            return;
+        var r = await us.UnBind(p);
+        if (!r.Successful)
+        {
+            notify.Notify(NotificationSeverity.Error, r.Error);
+        }
+        else
+        {
+            notify.Notify(NotificationSeverity.Success, "解绑成功");
+            user.Logins.Remove(p);
+        }
+    }
+
+    async Task DeleteUser()
+    {
+        var c = await ds.OpenConfirmAsync("确认注销？", "注销账号后所有信息都会删除，无法恢复");
+        if (!c)
+            return;
+        var r = await us.DeleteUser();
+        if (!r.Successful)
+        {
+            notify.Notify(NotificationSeverity.Error, r.Error);
+        }
+        else
+        {
+            notify.Notify(NotificationSeverity.Success, "账号已注销");
+        }
+    }
+}

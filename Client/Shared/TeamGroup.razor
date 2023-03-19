@@ -1,0 +1,121 @@
+﻿@inject DialogService ds
+@inject ApiService api
+@inject NotificationService ns
+
+<div class="mteam-div">
+    <div class="d-flex">
+        <div class="f-1 mteam-gname">
+            <p>@Group.Name<span>@Group.Note</span></p>
+        </div>
+        <div class="d-flex">
+            @if (ReadOnly)
+            {
+                <RadzenButton Icon="add" title="添加到我的队伍" ButtonStyle=" ButtonStyle.Primary" Click="Add" Style="margin-right:5px" />
+            }
+            else
+            {
+                <RadzenButton Icon="edit" ButtonStyle=" ButtonStyle.Secondary" Click="Edit" Style="margin-right:5px" />
+                <RadzenButton Icon="remove" ButtonStyle="ButtonStyle.Danger" Click="Delete" />
+            }
+        </div>
+    </div>
+    <div title="@(AllowCheck? "点击队名固定此队" :"")">
+        @foreach (var t in Group.Teams)
+        {
+            <div class="mteam-tdiv">
+                @if (AllowCheck)
+                {
+                    <p style="max-width:356px;cursor:pointer" @onclick="async _=>await SelectTeam(t)">@t.Name<span>@t.Note</span></p>
+                }
+                else
+                {
+                    <p style="max-width:356px">@t.Name<span>@t.Note</span></p>
+                }
+                <div class="d-flex" style="margin:0 -2px">
+                    @for (int i = 5; i > 0; i--)
+                    {
+                        if (t.Units.Count < i)
+                        {
+                            <div class="mteam-unit">
+                            </div>
+                        }
+                        else
+                        {
+                            var unit = t.Units[^i];
+                            if (unit is UserBoxLine line)
+                            {
+                                <div class="mteam-unit" title="@line.UnitName">
+                                    <img src="@line.Icon.GetUnitIcon()" />
+                                </div>
+                            }
+                            else if (unit is UnitData ud)
+                            {
+                                <div class="mteam-unit mteam-unit-sp" title="@ud.UnitName">
+                                    <img src="@ud.Icon.GetUnitIcon('3')" />
+                                </div>
+                            }
+                        }
+                    }
+                    @if (!t.Axis.IsNullOrEmpty() || !t.Links.IsNullOrEmpty())
+                    {
+                        <i class="rzi" title="轴/链接" style="cursor:pointer;color:dodgerblue;margin:0 0 0 5px;align-self:center" @onclick="_=>ShowAxis(t)">list</i>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public UserTeamGroup Group { get; set; }
+    [Parameter]
+    public bool ReadOnly { get; set; }
+    [Parameter]
+    public bool AllowCheck { get; set; }
+    [Parameter]
+    public EventCallback GroupChanged { get; set; }
+    [Parameter]
+    public EventCallback<UserTeam> TeamChecked { get; set; }
+
+    async Task Add()
+    {
+        var d = await api.AddUserTeamGroupAsync(Group);
+        if (d != null)
+        {
+            ns.Notify(NotificationSeverity.Success, "添加成功");
+            await GroupChanged.InvokeAsync(Group);
+        }
+    }
+
+    async Task Edit()
+    {
+        var d = await ds.OpenAsync<TeamGroupEdit>("编辑编组", new Dictionary<string, object> { ["Group"] = Group }, new DialogOptions { Width = "820px" });
+        if (d is bool b && b)
+            await GroupChanged.InvokeAsync(Group);
+    }
+
+    async Task Delete()
+    {
+        var b = await ds.OpenConfirmAsync("确认删除？", $"删除编组：{Group.Name}");
+        if (b == true)
+        {
+            var r = await api.DeletUserTeamGroupAsync(Group.Id);
+            if (r)
+            {
+                await GroupChanged.InvokeAsync(Group);
+            }
+        }
+    }
+
+
+    void ShowAxis(UserTeam t)
+    {
+        ds.Open<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["ReadOnly"] = true, ["Links"] = t.Links });
+    }
+
+    async Task SelectTeam(UserTeam t)
+    {
+        await TeamChecked.InvokeAsync(t);
+    }
+}

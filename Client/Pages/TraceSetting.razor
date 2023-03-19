@@ -1,0 +1,152 @@
+﻿@page "/traceSetting"
+
+@inject ApiService api
+@inject ArmoryService arm
+@inject NotificationService ns
+@attribute [Authorize]
+<RadzenCard>
+    <div class="row align-items-center">
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="星级" TValue="int?"
+                        Change="FilterChanged" Data="@rarities" @bind-Value="rarity"
+                        Style="width:110px" />
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="状态" TValue="UnitTraceType?"
+                        TextProperty="Key" ValueProperty="Value"
+                        Change="FilterChanged" Data="@traceTypes" @bind-Value="type"
+                        Style="width:110px" />
+        <RadzenButton Text="重置" ButtonStyle="ButtonStyle.Info" Click="Reset" Style="margin-left:10px" />
+        <RadzenButton Text="保存" Disabled="loading" ButtonStyle="ButtonStyle.Primary" Click="Save" Style="margin-left:10px" />
+    </div>
+    @if (traces == null)
+    {
+        <ProgressRing />
+    }
+    else
+    {
+        <div class="d-flex flex-wrap" style="margin:10px -17px 0 -17px">
+            @foreach (var ut in Filter())
+            {
+                <div class="unit-trace-div">
+                    <div style="width:96px;">
+                        <img src="@ut.Unit.Icon.GetUnitIcon()" />
+                        <p style="text-align:center;text-wrap:normal;margin-top:5px">@ut.Unit.UnitName</p>
+                    </div>
+                    <div style="margin-left:10px;margin-top:10px">
+                        <RadzenRadioButtonList TValue="UnitTraceType" @bind-Value="ut.TraceType" Orientation="Orientation.Vertical">
+                            <Items>
+                                @foreach (var (k, v) in traceTypes)
+                                {
+                                    <RadzenRadioButtonListItem Text="@k" Value="@v" />
+                                }
+                            </Items>
+                        </RadzenRadioButtonList>
+                        @if (ut.TraceType == UnitTraceType.Rank)
+                        {
+                            <RadzenNumeric TValue="int" @bind-Value="ut.Rank" Min="1" Style="width:100px" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</RadzenCard>
+
+<style>
+    .unit-trace-div {
+        margin: 2px;
+        border: 1px solid #adadad;
+        border-radius: 8px;
+        display: flex;
+    }
+
+        .unit-trace-div img {
+            width: 96px;
+            height: 96px;
+        }
+
+        .unit-trace-div .rz-radio-btn {
+            margin: 2px 0 !important;
+        }
+</style>
+
+@code {
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+
+    List<UnitData> units;
+    List<UnitTrace> traces;
+    bool loading;
+
+    List<int> rarities = new() { 1, 2, 3 };
+    int? rarity;
+
+    List<KeyValuePair<string, UnitTraceType>> traceTypes = new()
+    {
+            KeyValuePair.Create("最高Rank", UnitTraceType.Max),
+            KeyValuePair.Create("限制Rank", UnitTraceType.Rank),
+            KeyValuePair.Create("忽略", UnitTraceType.Ignore)
+        };
+    UnitTraceType? type;
+
+    protected override async Task OnInitializedAsync()
+    {
+        units = await api.GetAllUnitDatasAsync(Server);
+        await api.GetUserBox(Server);
+        var traces = units.Select(u => new UnitTrace(u)).ToList();
+        var uts = api.GetUnitsTraceSetting();
+        if (uts != null && !uts.UnitTraces.IsNullOrEmpty())
+        {
+            foreach (var ut in uts.UnitTraces)
+            {
+                var t = traces.FirstOrDefault(v => v.UnitId == ut.UnitId);
+                if (t != null)
+                {
+                    t.TraceType = ut.TraceType;
+                    t.Rank = ut.Rank;
+                }
+            }
+        }
+        this.traces = traces.OrderBy(t => t.Unit.SearchAreaWidth).ToList();
+    }
+
+    void Reset()
+    {
+        foreach (var item in traces)
+        {
+            item.TraceType = UnitTraceType.Max;
+            item.Rank = 0;
+        }
+    }
+
+    async Task Save()
+    {
+        try
+        {
+            var uts = new UnitsTraceSetting
+            {
+                UnitTraces = traces.Where(t => t.TraceType != UnitTraceType.Max).ToList()
+            };
+            await api.SaveUnitsTraceSetting(uts);
+            await arm.CalcEquipmentDemand(Server, true, true, false);
+            ns.Notify(NotificationSeverity.Success, "保存成功");
+        }
+        catch (Exception e)
+        {
+            ns.Notify(NotificationSeverity.Success, "保存失败");
+        }
+    }
+
+    void FilterChanged()
+    {
+
+    }
+
+    IEnumerable<UnitTrace> Filter()
+    {
+        var q = traces.AsEnumerable();
+        if (rarity.HasValue)
+            q = q.Where(u => u.Unit.Rarity == rarity);
+        if (type.HasValue)
+            q = q.Where(u => u.TraceType == type);
+        return q;
+    }
+}

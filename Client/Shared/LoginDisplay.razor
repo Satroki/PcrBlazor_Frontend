@@ -1,0 +1,25 @@
+﻿@inject NavigationManager Navigation
+@inject UserService user
+@inject ApiService api
+
+<AuthorizeView>
+    <Authorized>
+        <RadzenLabel Text="你好，" />
+        <RadzenLink Path="user" Text="@context.User.GetUserName()" Style="margin-right:20px"></RadzenLink>
+        <RadzenLink @onclick="@Logout" Text="登出"></RadzenLink>
+    </Authorized>
+    <NotAuthorized>
+        <RadzenLink Path="user" Text="登录"></RadzenLink>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code{
+
+    string text;
+
+    private async Task Logout()
+    {
+        await user.Logout();
+        api.ClearCache();
+    }
+}

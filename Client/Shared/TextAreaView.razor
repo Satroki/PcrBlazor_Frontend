@@ -1,0 +1,62 @@
+﻿@inject DialogService ds
+
+@if (!Links.IsNullOrEmpty())
+{
+    <div style="margin-bottom:5px">
+        @foreach (var linkArr in Links)
+        {
+            <a href="@linkArr[1]" target="_blank" class="ts-team-link">
+                @linkArr[0]
+                @if (linkArr.Length == 3)
+                {
+                    <span>@linkArr[2]</span>
+                }
+            </a>
+        }
+    </div>
+}
+@if (!txt.IsNullOrEmpty() || !ReadOnly)
+{
+    <RadzenTextArea Style="width:100%;min-height:250px" ReadOnly="@ReadOnly" @bind-Value="@txt" />
+}
+@if (!ReadOnly)
+{
+    <div class="d-flex align-items-center justify-content-center">
+        <RadzenButton ButtonStyle=" ButtonStyle.Primary" Text="保存" Click="Save" Style="padding:0 16px" />
+        <RadzenButton ButtonStyle=" ButtonStyle.Light" Text="取消" Click="_=>ds.Close()" Style="padding:0 16px;margin-left:10px" />
+    </div>
+}
+
+<style>
+    .ts-team-link {
+        margin-right: 10px;
+        display: block;
+    }
+
+        .ts-team-link span {
+            margin-left: 5px;
+            color: grey;
+            font-size: 0.9rem;
+        }
+</style>
+
+@code {
+    [Parameter]
+    public bool ReadOnly { get; set; }
+    [Parameter]
+    public string Text { get; set; }
+    [Parameter]
+    public List<string[]> Links { get; set; }
+
+    string txt;
+
+    protected override void OnParametersSet()
+    {
+        txt = Text;
+    }
+
+    void Save()
+    {
+        ds.Close(txt);
+    }
+}

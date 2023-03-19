@@ -1,0 +1,98 @@
+﻿<div class="d-flex atk-p" style="margin-top:10px">
+    @for (int i = 1; i <= aps.Length; i++)
+    {
+        var ap = aps[i-1];
+        if (ap != null)
+        {
+            if (i > 1)
+            {
+                <div style="width:10px"></div>
+            }
+            <RadzenFieldset Text="@("入场"+i)" Visible="ap.Start.Any()">
+                <div class="d-flex flex-wrap">
+                    @foreach (var ps in ap.Start)
+                    {
+                        <div class="atk-p-div">
+                            <img src="@GetIcon(ps)" />
+                            <p>@despDict[ps]</p>
+                        </div>
+                        <i class="rzi atk-p-i">play_arrow</i>
+                    }
+                </div>
+            </RadzenFieldset>
+            <RadzenFieldset Text="@("循环"+i)" Visible="ap.Loop.Any()">
+                <div class="d-flex flex-wrap">
+                    @foreach (var ps in ap.Loop)
+                    {
+                        <i class="rzi atk-p-i">play_arrow</i>
+                        <div class="atk-p-div">
+                            <img src="@GetIcon(ps)" />
+                            <p>@despDict[ps]</p>
+                        </div>
+                    }
+                    <i class="rzi atk-p-i">replay</i>
+                </div>
+            </RadzenFieldset>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public UnitData UnitData { get; set; }
+
+    [Parameter]
+    public ClanBattleBoss Boss { get; set; }
+
+    AttackPattern[] aps;
+
+    Dictionary<int, string> despDict = new Dictionary<int, string>();
+
+    Dictionary<int, string> iconDict;
+
+    string defaultIcon = 1001.GetSkillIcon();
+
+    protected override void OnParametersSet()
+    {
+        if (UnitData == null && Boss == null)
+            return;
+        if (!despDict.Any())
+        {
+            despDict.Add(1, "普攻");
+            for (int i = 1; i <= 10; i++)
+            {
+                despDict.Add(1000 + i, $"技能 {i}");
+            }
+            for (int i = 1; i <= 5; i++)
+            {
+                despDict.Add(2000 + i, $"SP {i}");
+            }
+        }
+        if (UnitData != null)
+        {
+            iconDict = new Dictionary<int, string>();
+            iconDict.Add(1001, UnitData.UnitSkillModel.Main1?.Icon.GetSkillIcon());
+            iconDict.Add(1002, UnitData.UnitSkillModel.Main2?.Icon.GetSkillIcon());
+            iconDict.Add(2001, UnitData.UnitSkillModel.Sp1?.Icon.GetSkillIcon());
+            iconDict.Add(2002, UnitData.UnitSkillModel.Sp2?.Icon.GetSkillIcon());
+            iconDict.Add(2003, UnitData.UnitSkillModel.Sp3?.Icon.GetSkillIcon());
+            iconDict.Add(2004, UnitData.UnitSkillModel.Sp4?.Icon.GetSkillIcon());
+            iconDict.Add(2005, UnitData.UnitSkillModel.Sp5?.Icon.GetSkillIcon());
+            var atk = UnitData.AtkType == 1 ? 101011 : 101251;
+            iconDict.Add(1, atk.GetEquipIcon());
+            aps = UnitData.AttackPatterns;
+        }
+        if (Boss != null)
+        {
+            iconDict = new Dictionary<int, string>();
+            iconDict.Add(1, 101011.GetEquipIcon());
+            aps = Boss.AttackPatterns;
+        }
+    }
+
+    string GetIcon(int id)
+    {
+        iconDict.TryGetValue(id, out var img);
+        return img ?? defaultIcon;
+    }
+}

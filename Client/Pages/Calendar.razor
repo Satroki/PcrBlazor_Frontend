@@ -1,0 +1,199 @@
+﻿@page "/calendar"
+@inject ApiService api
+@inject NotificationService nty
+@inject DialogService ds
+@implements IDisposable
+
+<RadzenCard>
+    @if (events != null)
+    {
+        <div class="d-flex">
+            <div style="margin-right:25px">
+                <h3 class="text-center">@title</h3>
+                @foreach (var ev in events)
+                {
+                    <div class="event" style="@GetStyle(ev.Type)">
+                        <p class="event-p1">@ev.Title</p>
+                        <p class="event-p2">@($"{ev.LocalStartTime:MM/dd HH:mm} - {ev.LocalEndTime :MM/dd HH:mm}")</p>
+                        <div class="event-p3 @ev.ProgressType">
+                            <i class="rzi event-i">@ev.Icon</i>
+                            <p class="f-1">@ev.Display</p>
+                            <i class="rzi event-i"></i>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="f-1">
+                <RadzenScheduler TItem="EventCalendar" Data="@events" StartProperty="LocalStartTime" EndProperty="LocalEndTime"
+                             TextProperty="Title" TodayText="今日" SelectedIndex="2" Style="width:100%;min-height:950px"
+                             SlotSelect="Add" AppointmentSelect="Edit" AppointmentRender="OnAppointmentRender">
+                    <RadzenDayView Text="日" StartTime="@TimeSpan.Zero" />
+                    <RadzenWeekView Text="周" StartTime="@TimeSpan.Zero" />
+                    <RadzenMonthView Text="月" MoreText="+ {0}" />
+                </RadzenScheduler>
+            </div>
+        </div>
+    }
+</RadzenCard>
+
+<style>
+    .event {
+        text-align: center;
+        border-radius: 5px;
+        width: 300px;
+        color: white;
+        margin-bottom: 15px;
+    }
+
+    .event-i {
+        font-size: 1rem;
+        width: 30px;
+    }
+
+    .event-p1 {
+        padding: 5px;
+        white-space: pre-line;
+        word-break: break-all;
+    }
+
+    .event-p2 {
+        padding: 2px;
+    }
+
+    .event-p3 {
+        background-color: gray;
+        border-radius: 0 0 5px 5px;
+        padding: 2px;
+        display: flex;
+        align-items: center;
+    }
+
+    .event-c-0 {
+    }
+
+    .event-c-1 {
+        color: lime;
+    }
+
+    .event-c-2 {
+        color: yellow;
+    }
+</style>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    bool isAdmin = false;
+    List<EventCalendar> events;
+    System.Threading.Timer timer;
+    string title;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var u = await authenticationStateTask;
+        isAdmin = u.User.IsInRole("Admin") && Server == "cn";
+        await LoadData();
+        Tick(null);
+        timer = new System.Threading.Timer(Tick);
+        timer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    void Tick(object s)
+    {
+        var now = DateTimeOffset.Now;
+        title = now.ToString("yyyy/MM/dd HH:mm:ss");
+        if (events != null)
+        {
+            foreach (var ev in events)
+            {
+                if (ev.EndTime < now)
+                {
+                    ev.Display = "已结束";
+                    ev.Icon = string.Empty;
+                    ev.ProgressType = "event-c-0";
+                }
+                else if (ev.StartTime > now)
+                {
+                    ev.Display = $"{FormatTs(ev.StartTime - now)} 后开始";
+                    ev.Icon = "pause";
+                    ev.ProgressType = "event-c-0";
+                }
+                else
+                {
+                    var ts = ev.EndTime - now;
+                    ev.Display = $"{FormatTs(ts)} 后结束";
+                    ev.Icon = "fast_forward";
+                    ev.ProgressType = ts.TotalDays > 1 ? "event-c-1" : "event-c-2";
+                }
+            }
+        }
+        StateHasChanged();
+    }
+
+    string FormatTs(TimeSpan ts)
+    {
+        if (ts.TotalDays >= 1)
+            return ts.ToString(@"d\.hh\:mm\:ss");
+        else
+            return ts.ToString(@"hh\:mm\:ss");
+    }
+
+    async Task LoadData(bool refresh = false)
+    {
+        events = await api.GetEvents(Server, refresh);
+    }
+
+    async Task Add(SchedulerSlotSelectEventArgs arg)
+    {
+        if (!isAdmin)
+            return;
+        var ev = new EventCalendar { StartTime = arg.Start, EndTime = arg.End, Title = "「」", Type = EventType.Festival };
+        var r = await ds.OpenAsync<AddEvent>("添加活动", new Dictionary<string, object> { ["Event"] = ev });
+        if (r is bool b && b)
+        {
+            await LoadData(true);
+        }
+    }
+
+    async Task Edit(SchedulerAppointmentSelectEventArgs<EventCalendar> args)
+    {
+        if (!isAdmin)
+            return;
+        var ev = args.Data.JsonCopy();
+        var r = await ds.OpenAsync<AddEvent>("编辑活动", new Dictionary<string, object> { ["Event"] = ev });
+        if (r is bool b && b)
+        {
+            await LoadData(true);
+        }
+    }
+
+    string GetStyle(EventType type)
+    {
+        return type switch
+        {
+            EventType.Festival => "background: #229851",
+            EventType.Story => "background: #1485e5",
+            EventType.ClanBattle => "background: #f24343",
+            EventType.Special => "background: #9753f5",
+            EventType.Gacha => "background: #c18b02",
+            _ => "background: #4e4e4e",
+        };
+    }
+
+    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<EventCalendar> args)
+    {
+        args.Attributes["style"] = GetStyle(args.Data.Type);
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            timer.Change(0, 0);
+            timer.Dispose();
+        }
+        catch { }
+    }
+}

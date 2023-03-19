@@ -1,0 +1,40 @@
+﻿<div class="trace-div">
+    <div class="trace-div-text d-flex">
+        <RadzenLabel Text="@Text"/>
+        @if (SpState == true)
+        {
+            <RadzenLabel Text="@SpText" />
+        }
+        else if (SpState == false)
+        {
+            <RadzenLabel Text="@SpText" Style="color:red" />
+        }
+    </div>
+    <div class="trace-div-value d-f-c" unreached="@Unreached">
+        <RadzenLabel Text="@Value.ToString()" />
+        @if (Trace)
+        {
+            <RadzenLabel Text="/" Style="margin:0 2px" />
+            <RadzenLabel Text="@(TargetValue.ToString() + AdditionalValue)" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool Trace { get; set; }
+    [Parameter]
+    public bool? SpState { get; set; }
+    [Parameter]
+    public string Text { get; set; }
+    [Parameter]
+    public string SpText { get; set; }
+    [Parameter]
+    public int Value { get; set; }
+    [Parameter]
+    public int TargetValue { get; set; }
+    [Parameter]
+    public string AdditionalValue { get; set; }
+
+    public bool Unreached => Trace && Value < TargetValue;
+}

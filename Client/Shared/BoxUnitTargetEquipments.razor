@@ -1,0 +1,107 @@
+﻿@inject ApiService api
+@inject ArmoryService arm
+@inject TooltipHelperService ts
+
+@if (Promotion == null)
+{
+    <div class="unit-equip">
+        @for (int i = 0; i < 6; i++)
+        {
+            <div class="unit-equip-img" no-equip>
+                <img src="@ds.GetEquipIcon()" />
+            </div>
+        }
+    </div>
+}
+else
+{
+    var ps = Promotion.EquipSlots;
+    <div class="unit-equip">
+        @for (int i = 1; i <= 6; i++)
+        {
+            var ii = i;
+            var noe = GetNoEquip(ii);
+            var eid = ps[ii - 1];
+
+            <div class="unit-equip-img" @onclick="@(_=>Click(ii))">
+                @if (MultiMode)
+                {
+                    <RadzenImage Path="@eid.GetEquipIcon()" no-equip="@noe" />
+                }
+                else
+                {
+                    <RadzenImage Path="@eid.GetEquipIcon()" MouseEnter="e=>ts.ShowEquipmentStatus(e,eid,Line.Server)" MouseLeave="ts.Close" no-equip="@noe" />
+                    @if (noe && eid != ds)
+                    {
+                        var (str, over) = GetStock(eid);
+                        <p overflow="@over" hidden="@(str==null)">@str</p>
+                    }
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public UserBoxLine Line { get; set; }
+
+    [Parameter]
+    public UnitPromotion Promotion { get; set; }
+
+    [Parameter]
+    public bool MultiMode { get; set; }
+
+    int ds = UnitPromotion.DefaultSlot;
+
+    Dictionary<int, int> stockDict;
+    List<EquipmentCraft> crafts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!MultiMode && Line != null && stockDict == null)
+        {
+            crafts = await api.GetEquipmentCraftsAsync(Line.Server);
+            stockDict = await arm.InitUserStockDict(Line.Server);
+        }
+    }
+
+    string GetEquipmentStatus(int id)
+    {
+        return api.EquipmentStatusSet.TryGetNameAndStatus(id, Line.Server);
+    }
+
+    void Click(int slot)
+    {
+        var ts = Line.TargetSolts;
+        Line.TargetSolts = ts.SetBit(slot, CheckSlot(Promotion[slot], ts.IsBitSet(slot)));
+    }
+
+    bool GetNoEquip(int slot)
+    {
+        return !Line.TargetSolts.IsBitSet(slot) || Line.TargetUnitPromotion[slot] == ds;
+    }
+
+    bool CheckSlot(int equipId, bool slot)
+    {
+        if (equipId == ds)
+            return false;
+        return !slot;
+    }
+
+    (string, bool) GetStock(int i)
+    {
+        if (stockDict != null)
+        {
+            if (stockDict.TryGetValue(i, out var s) && s > 0)
+                return ($"{s}/1", true);
+            var craft = crafts.FirstOrDefault(c => c.EquipmentId == i);
+            if (craft != null && craft.ConditionEquipmentId_1 > 0)
+            {
+                stockDict.TryGetValue(craft.ConditionEquipmentId_1, out var ss);
+                return ($"{ss}/{craft.ConsumeNum_1}", ss >= craft.ConsumeNum_1);
+            }
+        }
+        return (null, false);
+    }
+}

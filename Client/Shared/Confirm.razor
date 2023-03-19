@@ -1,0 +1,27 @@
+﻿@inject DialogService dialog
+
+<div>
+    <div hidden="@Content.IsNullOrEmpty()">
+        <p class="text-wrap">@Content</p>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="确定"
+                          Click="Ok" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+        </div>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public string Content { get; set; }
+
+    void Ok()
+    {
+        dialog.Close(true);
+    }
+    void Cancel()
+    {
+        dialog.Close();
+    }
+}

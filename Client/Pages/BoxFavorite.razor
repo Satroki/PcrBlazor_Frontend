@@ -1,0 +1,249 @@
+﻿@page "/box"
+@inject ApiService api
+@inject ILocalStorageService storage
+@inject NavigationManager nav
+@inject DialogService dialog
+@inject NotificationService ntf
+@inject TooltipHelperService ts
+
+@attribute [Authorize]
+
+<RadzenCard Style="position:relative">
+    <div class="row box-btns sticky-header">
+        @if (!groups.IsNullOrEmpty())
+        {
+            <RadzenDropDown Data="groups" TValue="GroupRecord" TextProperty="Name" @bind-Value="group" Change="GroupChanged" AllowClear="true" Placeholder="分组"
+                        Style="width:110px" />
+        }
+        @if (!filterMode)
+        {
+            <BoxFilter FilterRecord="fr" FilterChanged="@FilterChanged" />
+        }
+        <div class="f-1" style="text-align:right">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="分组" Click="@ShowGroup" Style="padding:0 16px" />
+            <RadzenButton ButtonStyle="ButtonStyle.Warning" Text="复制" Click="@Copy" Style="padding:0 16px" Disabled="@(fav==null)"
+                          MouseEnter="@(e=>ts.ShowString(e,"复制当前Box到我的Box"))" MouseLeave="ts.Close" />
+            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="筛选收藏" Click="@ShowFilter" Style="padding:0 16px" />
+            <RadzenButton ButtonStyle="ButtonStyle.Success" Text="添加收藏" Click="@AddFavorite" Style="padding:0 16px" />
+            <RadzenButton ButtonStyle="ButtonStyle.Info" Text="导出" Click="@Export" Style="padding:0 16px" />
+        </div>
+    </div>
+    <div class="d-flex">
+        <div style="max-width:180px;margin:0 25px 0 -15px">
+            <RadzenListBox AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" @bind-Value="favoriteId"
+                           Data="@groupFavorites" TextProperty="Display" ValueProperty="Id" TValue="int?"
+                           Change="FavoriteChanged">
+                <Template Context="d">
+                    <div class="d-flex align-items-center fav-line">
+                        <p class="f-1" style="word-break:break-all">@d.Display</p>
+                        <i class="rzi" @onclick="async (args)=>await Delete(d,args)" @onclick:stopPropagation="true">clear</i>
+                    </div>
+                </Template>
+            </RadzenListBox>
+        </div>
+        <div class="f-1" style="margin-top:-5px">
+            @if (loading)
+            {
+                <ProgressRing />
+            }
+            else
+            {
+                @if (box != null && !filterMode)
+                {
+                    <div class="row box-div">
+                        @foreach (var l in box)
+                        {
+                            <BoxUnit Line="l" AllowEdit="false"></BoxUnit>
+                        }
+                    </div>
+                }
+                @if (records != null && filterMode)
+                {
+                    foreach (var r in records)
+                    {
+                        <RadzenFieldset Style="width:100%">
+                            <HeaderTemplate>
+                                <div style="font-size:20px">@r.Note</div>
+                            </HeaderTemplate>
+                            <ChildContent>
+                                <div class="d-flex flex-row flex-wrap" style="margin:-10px">
+                                    @foreach (var l in r.Lines)
+                                    {
+                                        <BoxUnit Line="l" AllowEdit="false"></BoxUnit>
+                                    }
+                                </div>
+                            </ChildContent>
+                        </RadzenFieldset>
+                    }
+                }
+            }
+        </div>
+    </div>
+</RadzenCard>
+
+<style>
+    .fav-line i {
+        display: none;
+        font-size: 1.3em;
+        cursor: pointer;
+    }
+
+    .fav-line:hover i {
+        display: inline-block;
+    }
+</style>
+
+@code {
+    IEnumerable<UserBoxLine> box;
+    IEnumerable<UserBoxLine> originBox;
+    List<UserFavorite> favorites;
+    IEnumerable<UserFavorite> groupFavorites;
+    List<UnitFilterResult> records;
+    List<GroupRecord> groups;
+    int? favoriteId;
+    UserFavorite fav;
+    GroupRecord group;
+    bool filterMode = false;
+    bool loading = false;
+
+    LineFilterRecord fr = new LineFilterRecord();
+
+    protected override async Task OnInitializedAsync()
+    {
+        fr.ChangeLocalKey("LastShareFilterRecord");
+        fr = await storage.GetFilterRecord(fr, null);
+        await api.InitSettings();
+
+        favorites = await api.GetUserFavorites();
+        GroupChanged();
+        groups = await api.GetGroupRecordsAsync(GroupType.Favorite, null);
+        await api.GetServerInfoAsync("cn");
+        await api.GetServerInfoAsync("jp");
+        await api.GetEquipmentStatusSetAsync();
+    }
+
+    void GroupChanged()
+    {
+        if (group == null)
+            groupFavorites = favorites;
+        else
+            groupFavorites = favorites.Where(f => group.LineIds.Contains(f.Id));
+    }
+
+    async Task GetOriginBox(bool refresh = false)
+    {
+        if (originBox == null || refresh)
+        {
+            if (favoriteId.HasValue)
+            {
+                fav = favorites.Find(f => f.Id == favoriteId);
+                originBox = await api.GetSharedBox(fav.ShareId, fav.Server);
+            }
+        }
+    }
+
+    async Task GetBox(bool refresh = false)
+    {
+        await GetOriginBox(refresh);
+        if (originBox == null)
+            return;
+        box = fr.SetFiltersAndOrder(originBox);
+    }
+
+    async void BoxChanged()
+    {
+        await GetBox();
+        StateHasChanged();
+    }
+
+    async Task FilterChanged()
+    {
+        await storage.SaveFilterRecord(fr, null);
+        BoxChanged();
+    }
+
+    async Task FavoriteChanged()
+    {
+        try
+        {
+            loading = true;
+            await GetBox(true);
+            filterMode = false;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    async Task Delete(UserFavorite f, MouseEventArgs args)
+    {
+        if (f != null)
+        {
+            var r = await dialog.OpenConfirmAsync("确认删除？", f.Display);
+            if (r)
+            {
+                r = await api.DeleteUserFavoriteAsync(f.Id);
+                if (r)
+                {
+                    if (f.Id == favoriteId)
+                    {
+                        favoriteId = null;
+                        box = null;
+                    }
+                    favorites = await api.GetUserFavorites();
+                    GroupChanged();
+                }
+            }
+        }
+    }
+
+    async Task AddFavorite()
+    {
+        var ff = await dialog.OpenAsync<AddFavorite>("添加收藏");
+        if (ff is bool b && b)
+        {
+            favorites = await api.GetUserFavorites();
+            GroupChanged();
+        }
+    }
+
+    async Task ShowFilter()
+    {
+        var list = await dialog.OpenAsync<BoxFavoriteFilter>("筛选条件", null, new DialogOptions { Height = "70vh" });
+        if (list is List<UnitFilterResult> rs && !rs.IsNullOrEmpty())
+        {
+            records = rs;
+            filterMode = true;
+        }
+    }
+
+    async Task Export()
+    {
+        api.FavExportSetting.GroupId = group?.Id;
+        api.FavExportSetting.EnableFilters = filterMode;
+        var s = await api.ExportUserFavorites();
+        if (s.IsNullOrEmpty())
+            ntf.Notify(NotificationSeverity.Warning, "无数据");
+        else
+            await api.SaveFileLink("收藏导出.zip", s);
+    }
+
+    async Task ShowGroup()
+    {
+        var r = await dialog.OpenAsync<GroupFavorite>("收藏分组", new Dictionary<string, object>
+            {
+                ["Favorites"] = favorites,
+                ["Groups"] = groups
+            }, new DialogOptions { Width = "700px" });
+    }
+
+    void Copy()
+    {
+        dialog.Open<BoxCopy>("复制选项", new Dictionary<string, object>
+            {
+                ["ShareId"] = fav.ShareId,
+                ["ShareServer"] = fav.Server,
+            });
+    }
+}

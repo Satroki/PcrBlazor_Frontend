@@ -1,0 +1,86 @@
+﻿@inject ApiService api
+@inject DialogService ds
+@inject NotificationService ns
+@inject TooltipHelperService ts
+
+<div class="d-flex align-items-center" style="margin-bottom:10px">
+    <RadzenLabel Text="复制方式：" />
+    <RadzenRadioButtonList @bind-Value="setting.CopyAll" TValue="bool" Orientation="Orientation.Horizontal">
+        <Items>
+            <RadzenRadioButtonListItem Text="指定字段" Value="@(false)" />
+            <RadzenRadioButtonListItem Text="完全复制" Value="@(true)" />
+        </Items>
+    </RadzenRadioButtonList>
+</div>
+<div class="d-flex align-items-center" style="margin-bottom:10px">
+    <RadzenLabel Text="不存在角色：" />
+    <RadzenRadioButtonList @bind-Value="setting.AddIfNotExist" TValue="bool" Orientation="Orientation.Horizontal">
+        <Items>
+            <RadzenRadioButtonListItem Text="忽略" Value="@(false)" />
+            <RadzenRadioButtonListItem Text="添加到Box" Value="@(true)" />
+        </Items>
+    </RadzenRadioButtonList>
+</div>
+@if (!setting.CopyAll)
+{
+    <div>
+        <RadzenLabel Text="复制字段：" />
+        <RadzenCheckBoxList @bind-Value="fields" TValue="string" Orientation="Orientation.Horizontal">
+            <Items>
+                @foreach (var item in allFileds.OrderBy(f => f.Item3))
+                {
+                    <RadzenCheckBoxListItem Text="@item.Item2" Value="@item.Item1" />
+                }
+            </Items>
+        </RadzenCheckBoxList>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="d-flex align-items-end justify-content-center" style="margin-top: 10px;">
+        <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="确定"
+                      Click="Submit" />
+        <RadzenButton ButtonStyle="ButtonStyle.Light" style="display: inline-block; margin-left: 10px;" Text="取消" Click="@Cancel" />
+    </div>
+</div>
+
+@code {
+    BoxCopySetting setting = new BoxCopySetting();
+    IEnumerable<string> fields = new List<string> { nameof(UserBoxLine.TargetPromotion) };
+    List<(string, string, int)> allFileds = new List<(string, string, int)>();
+    [CascadingParameter(Name = "Server")]
+    public string Server { get; set; }
+    [Parameter]
+    public string ShareId { get => setting.BoxShareId; set => setting.BoxShareId = value; }
+    [Parameter]
+    public string ShareServer { get => setting.BoxServer; set => setting.BoxServer = value; }
+
+    protected override void OnInitialized()
+    {
+        var props = typeof(UserBoxLine).GetProperties();
+
+        foreach (var p in props)
+        {
+            var attr = p.GetCustomAttribute<DisplayAttribute>();
+            if (attr != null)
+                allFileds.Add((p.Name, attr.Name, attr.Order));
+        }
+    }
+
+    async Task Submit()
+    {
+        setting.Fields = fields?.ToList();
+        setting.Server = Server;
+        if (setting.CopyAll || !setting.Fields.IsNullOrEmpty())
+        {
+            var cnt = await api.CopyUserBox(setting);
+            ns.Notify(NotificationSeverity.Success, $"成功复制 {cnt} 条");
+        }
+        ds.Close();
+    }
+
+    void Cancel()
+    {
+        ds.Close();
+    }
+}
