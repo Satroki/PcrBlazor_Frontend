@@ -26,10 +26,10 @@
             <div class="f-1">
                 <RadzenScheduler TItem="EventCalendar" Data="@events" StartProperty="LocalStartTime" EndProperty="LocalEndTime"
                              TextProperty="Title" TodayText="今日" SelectedIndex="2" Style="width:100%;min-height:950px"
-                             SlotSelect="Add" AppointmentSelect="Edit" AppointmentRender="OnAppointmentRender">
+                             SlotSelect="Add" AppointmentSelect="Edit" AppointmentRender="OnAppointmentRender" SlotRender="OnSlotRender">
                     <RadzenDayView Text="日" StartTime="@TimeSpan.Zero" />
                     <RadzenWeekView Text="周" StartTime="@TimeSpan.Zero" />
-                    <RadzenMonthView Text="月" MoreText="+ {0}" />
+                    <RadzenMonthView Text="月" MoreText="+ {0}"/>
                 </RadzenScheduler>
             </div>
         </div>
@@ -185,6 +185,14 @@
     void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<EventCalendar> args)
     {
         args.Attributes["style"] = GetStyle(args.Data.Type);
+    }
+
+    void OnSlotRender(SchedulerSlotRenderEventArgs args)
+    {
+        if (args.View.Text == "月" && args.Start.Date == DateTime.Today)
+        {
+            args.Attributes["style"] = "background: rgba(255,100,100,.2);";
+        }
     }
 
     public void Dispose()

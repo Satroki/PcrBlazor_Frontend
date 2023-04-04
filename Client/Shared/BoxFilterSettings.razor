@@ -20,6 +20,10 @@
             <RadzenLabel Text="优先级" Component="ShowPriority" Style="margin-left: 5px;" />
         </div>
         <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowPriorityTo" TValue="bool" Name="ShowPriorityTo" />
+            <RadzenLabel Text="优先级范围" Component="ShowPriorityTo" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
             <RadzenCheckBox @bind-Value="@FilterRecord.ShowPos" TValue="bool" Name="ShowPos" />
             <RadzenLabel Text="位置" Component="ShowPos" Style="margin-left: 5px;" />
         </div>

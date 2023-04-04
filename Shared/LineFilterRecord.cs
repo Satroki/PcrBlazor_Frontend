@@ -31,6 +31,7 @@ namespace PcrBlazor.Shared
         public bool ShowR6 { get; set; }
         public bool ShowStatusSorter { get; set; } = true;
         public bool ShowPriority { get; set; }
+        public bool ShowPriorityTo { get; set; }
 
         [JsonIgnore]
         public List<GroupRecord> Groups { get; set; }
@@ -122,20 +123,23 @@ namespace PcrBlazor.Shared
                 lines = lines.Where(l => l.HasUniqueEquip == FilterUnique);
             if (ShowR6 && FilterRarity6.HasValue)
                 lines = lines.Where(l => l.HasRarity6 == FilterRarity6);
-            if (ShowPriority && Priority.HasValue)
-                lines = lines.Where(l => (l.Priority ?? 0) == Priority);
+            if (ShowPriority)
+            {
+                if (!ShowPriorityTo && Priority.HasValue)
+                    lines = lines.Where(l => (l.Priority ?? 0) == Priority);
+                else if (ShowPriorityTo)
+                {
+                    lines = (Priority, PriorityTo) switch
+                    {
+                        (null, null) => lines,
+                        (_, null) => lines.Where(l => (l.Priority ?? 0) >= Priority),
+                        (null, _) => lines.Where(l => (l.Priority ?? 0) <= PriorityTo),
+                        (_, _) => lines.Where(l => (l.Priority ?? 0) >= Priority && (l.Priority ?? 0) <= PriorityTo),
+                    };
+                }
+            }
             if (!string.IsNullOrWhiteSpace(Name))
                 lines = lines.Where(l => l.UnitName.Contains(Name));
-            //if (ShowPriority)
-            //{
-            //    lines = (Priority, PriorityTo) switch
-            //    {
-            //        (null, null) => lines,
-            //        (_, null) => lines.Where(l => (l.Priority ?? 0) >= Priority),
-            //        (null, _) => lines.Where(l => (l.Priority ?? 0) <= PriorityTo),
-            //        (_, _) => lines.Where(l => (l.Priority ?? 0) >= Priority && (l.Priority ?? 0) <= PriorityTo),
-            //    };
-            //}
             return SetOrder(lines);
         }
     }

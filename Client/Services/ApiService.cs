@@ -920,6 +920,7 @@ namespace PcrBlazor.Client.Services
         public async Task<List<UserTeamGroup>> CalcTeamGroupingAsync(IEnumerable<ClanBattleTeamGroup> cbTeamGroup, List<int> boxIds, string s, GroupingSettings gs)
         {
             await Task.Yield();
+
             var used = cbTeamGroup.SelectMany(t => t.Teams).Where(t => t.Checked).ToList();
             var tms = new List<ClanBattleTeam>();
             var tmsr = new Dictionary<string, List<ClanBattleTeam>>();
@@ -930,7 +931,12 @@ namespace PcrBlazor.Client.Services
                 cbtg.Teams.ForEach(t => t.NoSupporter = cbtg.NoSupporter);
                 if (cbtg.Selected || rtDict.ContainsValue(cbtg.Name))
                 {
-                    var teams = cbtg.Teams.Where(t => t.Enabled && t.UnitIds.Except(boxIds).Count() <= spCnt).ToList();
+                    var teamsQ = cbtg.Teams.Where(t => t.Enabled && t.UnitIds.Except(boxIds).Count() <= spCnt);
+                    if (gs.ExceptAllUnits.Any())
+                    {
+                        teamsQ = teamsQ.Where(t => !t.UnitIds.Any(gs.ExceptAllUnits.Contains));
+                    }
+                    var teams = teamsQ.ToList();
                     if (cbtg.Selected)
                         tms.AddRange(teams);
                     if (rtDict.ContainsValue(cbtg.Name))
@@ -1022,7 +1028,10 @@ namespace PcrBlazor.Client.Services
                                 if (tmsr.TryGetValue(rBoss, out var rTeams))
                                 {
                                     var box = leftBoxIds.Concat(t.UnitIds);
-                                    rteamsArr[ti] = rTeams.Where(t => t.UnitIds.Except(box).Count() <= 1).ToList();
+                                    var rts = rTeams.Where(t => t.UnitIds.Except(box).Count() <= 1);
+                                    if (gs.TailFirst)
+                                        rts = rts.OrderByDescending(t => t.Tail);
+                                    rteamsArr[ti] = rts.ToList();
                                 }
                                 else
                                     rteamsArr[ti] = new();

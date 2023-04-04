@@ -117,8 +117,10 @@ namespace PcrBlazor.Client
         public int TeamCnt { get; set; } = 3;
         public bool PointMode { get; set; }
         public bool WithSame { get; set; }
+        public bool TailFirst { get; set; }
         public List<int> GroupIds { get; set; }
         public List<int> ExceptUnits { get; set; } = new();
+        public List<int> ExceptAllUnits { get; set; } = new();
 
         public override string ToString()
         {

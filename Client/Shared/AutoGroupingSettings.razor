@@ -16,7 +16,7 @@
 </div>
 <div style="margin:10px 0">
     <RadzenLabel Text="排除指定角色：" Style="margin:0 5px 0 0" />
-    <RadzenLabel Text="清空" Style="margin:0 5px 0 0;color:dodgerblue;cursor:pointer" @onclick="ClearUnits"/>
+    <RadzenLabel Text="清空" Style="margin:0 5px 0 0;color:dodgerblue;cursor:pointer" @onclick="ClearUnits" />
 
     <div class="ags-u-div">
         @foreach (var u in units.OrderBy(u => u.SearchAreaWidth))
@@ -26,6 +26,22 @@
             </div>
         }
         <div class="ags-unit ags-add d-f-c" style="" @onclick="PickUnits">
+            <i class="rzi" style="font-size:64px;color:#adadad;">add</i>
+        </div>
+    </div>
+</div>
+<div style="margin:10px 0">
+    <RadzenLabel Text="排除含以下角色作业：" Style="margin:0 5px 0 0" />
+    <RadzenLabel Text="清空" Style="margin:0 5px 0 0;color:dodgerblue;cursor:pointer" @onclick="ClearUnits2" />
+
+    <div class="ags-u-div">
+        @foreach (var u2 in units2.OrderBy(u => u.SearchAreaWidth))
+        {
+            <div class="ags-unit" @onclick="_=>RemoveUnit2(u2)">
+                <RadzenImage Path="@u2.Icon.GetUnitIcon()" MouseEnter="e=>ts.ShowString(e,u2.UnitName)" MouseLeave="ts.Close" />
+            </div>
+        }
+        <div class="ags-unit ags-add d-f-c" style="" @onclick="PickUnits2">
             <i class="rzi" style="font-size:64px;color:#adadad;">add</i>
         </div>
     </div>
@@ -73,6 +89,7 @@
     List<GroupRecord> groups = new();
     IEnumerable<int> groupIds;
     List<UnitData> units = new();
+    List<UnitData> units2 = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -82,6 +99,11 @@
         {
             var all = await api.GetAllUnitDatasAsync(Server);
             units = all.Where(u => Settings.ExceptUnits.Contains(u.UnitId)).ToList();
+        }
+        if (!Settings.ExceptAllUnits.IsNullOrEmpty())
+        {
+            var all = await api.GetAllUnitDatasAsync(Server);
+            units2 = all.Where(u => Settings.ExceptAllUnits.Contains(u.UnitId)).ToList();
         }
     }
 
@@ -108,15 +130,35 @@
         Settings.ExceptUnits = units.Select(u => u.UnitId).ToList();
     }
 
+    async Task PickUnits2()
+    {
+        var d = await ds.OpenUnitPickerAsync(null, null, Settings.ExceptAllUnits);
+        if (d.IsNullOrEmpty())
+            units2.Clear();
+        else
+            units2 = d;
+        Settings.ExceptAllUnits = units2.Select(u => u.UnitId).ToList();
+    }
+
     void RemoveUnit(UnitData u)
     {
         units?.Remove(u);
         Settings.ExceptUnits?.Remove(u.UnitId);
     }
+    void RemoveUnit2(UnitData u)
+    {
+        units2?.Remove(u);
+        Settings.ExceptAllUnits?.Remove(u.UnitId);
+    }
     void ClearUnits()
     {
         units.Clear();
         Settings.ExceptUnits = new();
+    }
+    void ClearUnits2()
+    {
+        units2.Clear();
+        Settings.ExceptAllUnits = new();
     }
     async Task Ok()
     {

@@ -1,15 +1,5 @@
 ﻿@inject DialogService ds
 <div class="d-flex align-items-center">
-    @*@if (FilterRecord.ShowPriority)
-    {
-    <RadzenNumeric Placeholder="优先" TextProperty="Key" TValue="int?"
-    Change="@FilterChanged" @bind-Value="FilterRecord.Priority"
-    Style="width:55px" />
-    <p style="margin:0 3px">-</p>
-    <RadzenNumeric Placeholder="" TextProperty="Key" TValue="int?"
-    Change="@FilterChanged" @bind-Value="FilterRecord.PriorityTo"
-    Style="width:55px" />
-    }*@
     @if (!FilterRecord.Groups.IsNullOrEmpty())
     {
         <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="true" Placeholder="分组" TextProperty="Name" ValueProperty="Id"
@@ -39,6 +29,13 @@
         <RadzenNumeric Placeholder="优先级" TextProperty="Key" TValue="int?"
                    Change="@FilterChanged" @bind-Value="FilterRecord.Priority"
                    Style="width:95px" />
+        @if (FilterRecord.ShowPriorityTo)
+        {
+            <p style="margin:0 3px">-</p>
+            <RadzenNumeric Placeholder="" TextProperty="Key" TValue="int?"
+                   Change="@FilterChanged" @bind-Value="FilterRecord.PriorityTo"
+                   Style="width:55px" />
+        }
     }
     @if (FilterRecord.ShowPos)
     {
@@ -115,10 +112,14 @@
 
     async Task ShowSettings()
     {
-        await ds.OpenAsync<BoxFilterSettings>("筛选设置", new Dictionary<string, object>
+        var r = await ds.OpenAsync<BoxFilterSettings>("筛选设置", new Dictionary<string, object>
             {
                 ["FilterRecord"] = FilterRecord
             }, new() { Width = "400px" });
+        if (r == true)
+        {
+            await FilterChanged.InvokeAsync();
+        }
     }
 
     async Task StatusKeyChanged()

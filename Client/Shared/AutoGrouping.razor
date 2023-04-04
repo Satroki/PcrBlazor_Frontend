@@ -29,6 +29,8 @@
         <RadzenCheckBox TValue="bool" @bind-Value="gs.PointMode" />
         <RadzenLabel Text="附通用刀" Style="margin:0 5px 0 10px" title="计算结果额外添加多Boss通用刀型" />
         <RadzenCheckBox TValue="bool" @bind-Value="gs.WithSame" />
+        <RadzenLabel Text="优先补偿尾刀" Style="margin:0 5px 0 10px" />
+        <RadzenCheckBox TValue="bool" @bind-Value="gs.TailFirst" />
         <RadzenLabel Text="总刀数：" Style="margin:0 5px 0 10px" />
         <RadzenNumeric Min="1" Max="3" TValue="int" @bind-Value="gs.TeamCnt" Style="width:50px" />
         <RadzenLabel Text="法刀≤" Style="margin:0 5px 0 10px" />
