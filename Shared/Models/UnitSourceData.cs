@@ -14,6 +14,7 @@ namespace PcrBlazor.Shared
         //public UniqueEquipEnhanceRate UniqueEquipmentEnhanceRate { get; set; }
         public List<UniqueEquipEnhanceRate> UniqueEquipmentEnhanceRates { get; set; }
         public List<PromotionBonus> PromotionBonus { get; set; }
+        public List<PromotionBonus> PromotionBonusCn { get; set; }
         public DateTimeOffset? LastModified { get; set; }
     }
 }

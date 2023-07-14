@@ -19,6 +19,7 @@ namespace PcrBlazor.Shared
         public string Comment { get; set; }
         public int AtkType { get; set; }
         public int Cutin1_Star6 { get; set; }
+        public int IsLimited { get; set; }
         public DateTimeOffset EndTime { get; set; }
         [ForeignKey(nameof(UnitId))]
         public UnitBackground UnitBackground { get; set; }

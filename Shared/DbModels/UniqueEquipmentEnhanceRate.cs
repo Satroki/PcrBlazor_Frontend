@@ -4,6 +4,7 @@ namespace PcrBlazor.Shared
 {
     public class UniqueEquipEnhanceRate : IUnitStatus
     {
+        [Key]
         public int Id { get; set; }
         public int EquipmentId { get; set; }
         public int MinLv { get; set; }

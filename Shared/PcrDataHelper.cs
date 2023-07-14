@@ -733,9 +733,10 @@ namespace PcrBlazor.Shared
                     }
                 }
 
-                if (!isCn && withRB)
+                if (withRB)
                 {
-                    var pb = sd.PromotionBonus?.Find(b => b.PromotionLevel == line.Promotion);
+                    var rbs = isCn ? sd.PromotionBonusCn : sd.PromotionBonus;
+                    var pb = rbs?.Find(b => b.PromotionLevel == line.Promotion);
                     if (pb != null)
                     {
                         foreach (var p in statusKeys)
