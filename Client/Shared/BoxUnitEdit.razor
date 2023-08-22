@@ -39,7 +39,6 @@
                 </div>
                 <div class="f-30">
                     <NumInput input-block Name="Pieces" @bind-Value="Line.Pieces" Min="0" Disabled="@multiMode" />
-
                 </div>
             </div>
             <div class="div-br" />
@@ -107,9 +106,15 @@
             <div class="div-br" />
             <div class="d-flex">
                 <div class="f-20 align-items-center justify-content-center d-flex">
+                    <RadzenLabel Text="专武2" />
+                </div>
+                <div class="f-20">
+                    <RadzenNumeric input-block Name="UniqueEquip2Rank" @bind-Value="Line.UniqueEquip2Rank" TValue="int?" Min="0" Max="5" Disabled="@noUnique2" />
+                </div>
+                <div class="f-20 align-items-center justify-content-center d-flex">
                     <RadzenLabel Text="备注" />
                 </div>
-                <div class="f-80">
+                <div class="f-40">
                     <RadzenTextBox style="width: 100%;" Name="Note" @bind-Value="Line.Note" />
                 </div>
             </div>
@@ -137,7 +142,7 @@
                     </div>
                     <div class="f-25">
                         <RadzenNumeric input-block TValue="int?" @bind-Value="Line.MaxRank" Min="1"
-                                   Change="@(async ()=> { SetMaxRank();await SetSlots(); })" />
+                                       Change="@(async ()=> { SetMaxRank();await SetSlots(); })" />
 
                     </div>
                     <div class="f-25 align-items-center justify-content-center d-flex">
@@ -145,7 +150,7 @@
                     </div>
                     <div class="f-25">
                         <RadzenNumeric input-block TValue="int?" @bind-Value="Line.MaxSlots" Max="6" Min="1"
-                                   Change="SetSlots" />
+                                       Change="SetSlots" />
                     </div>
                 </div>
             }
@@ -208,6 +213,7 @@
     int maxStar = 5;
     int maxLoveLevel = 8;
     bool noUnique = true;
+    bool noUnique2 = true;
     bool multiMode = false;
     UnitStatusCalculator calculator;
     UnitStatus us;
@@ -265,6 +271,8 @@
             }
             if (Line.HasUniqueEquip || api.Settings.AllowAllUnique)
                 noUnique = false;
+            if (Line.HasUniqueEquip2)
+                noUnique2 = false;
             (mr, ms, ma) = await api.GetLimitParamAsync(Line.Server);
             Line.TargetUnitPromotion = await api.GetUnitPromotionAsync(Line, Line.TargetPromotion);
             if (!Line.EnableTargetSolts)

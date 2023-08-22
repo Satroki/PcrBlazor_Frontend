@@ -7,7 +7,7 @@ namespace PcrBlazor.Client
 {
     public static class Constants
     {
-        public const string ClientVersion = "1.5.2";
+        public const string ClientVersion = "1.5.3";
         public const string ToolUrl = "https://pan.baidu.com/s/1EC_MplDJvRBK6bUHHUn8DA";
         public const string ToolUrlCode = "vk3g";
 

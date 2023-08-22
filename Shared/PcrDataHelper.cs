@@ -733,6 +733,18 @@ namespace PcrBlazor.Shared
                     }
                 }
 
+                if (line.UniqueEquip2Rank >= 0)
+                {
+                    if (sd.UniqueEquipment2Data != null)
+                    {
+                        var dict = CalcUniqueEquipmentStatus(sd.UniqueEquipment2Data, sd.UniqueEquipment2EnhanceRates, line.UniqueEquip2Rank.Value);
+                        foreach (var p in statusKeys)
+                        {
+                            status[p] = status[p] + dict.GetValueOrDefault(p);
+                        }
+                    }
+                }
+
                 if (withRB)
                 {
                     var rbs = isCn ? sd.PromotionBonusCn : sd.PromotionBonus;

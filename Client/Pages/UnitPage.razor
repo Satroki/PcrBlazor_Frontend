@@ -137,6 +137,40 @@ else
                     </RadzenFieldset>
                 </div>
             }
+            @if (ue2Data != null)
+            {
+                <div style="margin-top:10px">
+                    <RadzenFieldset Text="专武2">
+                        <div class="d-flex">
+                            <img src="@ue2Data.EquipmentId.GetEquipIcon()" style="width:128px;height:128px" />
+                            @if (ue2Status != null)
+                            {
+                                <div style="margin-left:20px;min-width:450px">
+                                    <div class="d-flex flex-row flex-wrap" style="margin:5px -5px 0 -5px">
+                                        @foreach (var key in UnitStatus.StatusKeys)
+                                        {
+                                            if (ShowField2(key))
+                                            {
+                                                <div class="d-flex align-items-center justify-content-end status-div" style="flex:1 0 50%">
+                                                    <p class="status-name">@UnitStatus.Names[key]</p>
+                                                    <p class="status-value">@ue2Status[key]</p>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                    <div class="d-flex align-items-center" style="margin-top:5px">
+                                        <p>强化等级：</p>
+                                        <div style="margin:0 5px 0 20px">
+                                            <RadzenNumeric @bind-Value="enhance2Level" Max="5" Min="0" Style="width:80px" TValue="int" Change="Enhance2LevelChanged" />
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <p style="white-space:pre-line;margin-top:20px">@ue2Desp</p>
+                    </RadzenFieldset>
+                </div>
+            }
             <div style="margin-top:10px">
                 <RadzenFieldset Text="属性（不含其他同名角色）">
                     <div>
@@ -209,10 +243,14 @@ else
     UnitStatusCalculator calculator;
     UnitStatus status;
     UniqueEquipmentData ueData;
+    UniqueEquipmentData ue2Data;
     Dictionary<string, double> ueStatus;
+    Dictionary<string, double> ue2Status;
     int enhanceLevel = 1;
     int maxEnhanceLevel = 1;
     string ueDesp;
+    string ue2Desp;
+    int enhance2Level = 5;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -259,6 +297,20 @@ else
                     }
                     EnhanceLevelChanged(enhanceLevel);
                 }
+
+                ue2Data = unitSourceData.UniqueEquipment2Data;
+                if (ue2Data != null)
+                {
+                    if (Server == "cn" && ue2Data.DescriptionCn != null)
+                    {
+                        ue2Desp = $"【{ue2Data.EquipmentNameCn}】 {ue2Data.DescriptionCn.Replace("\\n", "")}";
+                    }
+                    else
+                    {
+                        ue2Desp = $"【{ue2Data.EquipmentName}】 {ue2Data.Description?.Replace("\\n", "")}";
+                    }
+                    Enhance2LevelChanged(enhance2Level);
+                }
             }
             catch
             {
@@ -290,11 +342,26 @@ else
         return ueStatus[key] != 0;
     }
 
+    bool ShowField2(string key)
+    {
+        if (ue2Status == null)
+            return false;
+        return ue2Status[key] != 0;
+    }
+
     void EnhanceLevelChanged(int l)
     {
         if (ueData != null)
         {
             ueStatus = calculator.CalcUniqueEquipmentStatus(ueData, unitSourceData.UniqueEquipmentEnhanceRates, enhanceLevel);
+        }
+    }
+
+    void Enhance2LevelChanged(int l)
+    {
+        if (ue2Data != null)
+        {
+            ue2Status = calculator.CalcUniqueEquipmentStatus(ue2Data, unitSourceData.UniqueEquipment2EnhanceRates, enhance2Level);
         }
     }
 }

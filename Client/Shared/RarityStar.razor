@@ -3,6 +3,10 @@
     {
         <img src="/ue.png" no-equip="@NoEquip"/>
     }
+    @if (HasUnique2)
+    {
+        <img src="/ue.png" no-equip="@NoEquip2" />
+    }
     @for (int i = 1; i <= Stars; i++)
     {
         if (i <= Value)
@@ -31,4 +35,8 @@
     public bool NoEquip { get; set; }
     [Parameter]
     public bool HasUnique { get; set; }
+    [Parameter]
+    public bool NoEquip2 { get; set; }
+    [Parameter]
+    public bool HasUnique2 { get; set; }
 }

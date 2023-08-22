@@ -47,7 +47,8 @@
             }
         }
         <a href="/unit/@Line.UnitId" class="rzi unit-info-icon">info</a>
-        <RarityStar Stars="@star" Value="@Line.Rarity" TargetValue="@Line.TargetRarity" HasUnique="@Line.HasUniqueEquip" NoEquip="@(Line.UniqueEquipRank==0)" />
+        <RarityStar Stars="@star" Value="@Line.Rarity" TargetValue="@Line.TargetRarity" HasUnique="@Line.HasUniqueEquip" NoEquip="@(Line.UniqueEquipRank==0)"
+                    HasUnique2=@Line.HasUniqueEquip2 NoEquip2="@(!Line.UniqueEquip2Rank.HasValue)" />
     </div>
     @if (!Line.Note.IsNullOrEmpty())
     {

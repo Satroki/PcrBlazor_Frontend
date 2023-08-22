@@ -21,6 +21,7 @@ namespace PcrBlazor.Shared
         private int promotion;
         private int loveLevel;
         private int uniqueEquipRank;
+        private int? uniqueEquip2Rank;
         private int targetRarity;
         private int targetPromotion;
         private int targetLoveLevel;
@@ -82,6 +83,7 @@ namespace PcrBlazor.Shared
         public bool[] Slots => new[] { Slot1, Slot2, Slot3, Slot4, Slot5, Slot6 };
 
         public int UniqueEquipRank { get => uniqueEquipRank; set => SetProperty(ref uniqueEquipRank, value); }
+        public int? UniqueEquip2Rank { get => uniqueEquip2Rank; set => SetProperty(ref uniqueEquip2Rank, value); }
 
         public string Icon { get; set; }
 
@@ -115,6 +117,8 @@ namespace PcrBlazor.Shared
         public int SearchAreaWidth { get; set; }
         [NotMapped]
         public bool HasUniqueEquip { get; set; }
+        [NotMapped]
+        public bool HasUniqueEquip2 { get; set; }
         [NotMapped]
         public bool HasRarity6 { get; set; }
         [NotMapped]
@@ -237,6 +241,7 @@ namespace PcrBlazor.Shared
         {
             SetFinished();
             HasUniqueEquip = Array.IndexOf(si.UniqueEquipUnits, UnitId) >= 0;
+            HasUniqueEquip2 = Array.IndexOf(si.UniqueEquip2Units, UnitId) >= 0;
             HasRarity6 = Array.IndexOf(si.Rarity6Units, UnitId) >= 0;
         }
 

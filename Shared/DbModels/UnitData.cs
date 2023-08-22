@@ -65,6 +65,13 @@ namespace PcrBlazor.Shared
         public int EquipId { get; set; }
     }
 
+    public class UnitUniqueEquipment
+    {
+        public int UnitId { get; set; }
+        public int EquipSlot { get; set; }
+        public int EquipId { get; set; }
+    }
+
     public class ExperienceUnit
     {
         [Key]

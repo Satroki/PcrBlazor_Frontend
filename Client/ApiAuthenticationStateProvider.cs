@@ -164,9 +164,9 @@ namespace PcrBlazor.Client
         {
             var token = await localStorage.GetItemAsync<string>(key);
             if (string.IsNullOrWhiteSpace(token))
-                return new AccessTokenResult(AccessTokenResultStatus.RequiresRedirect, null, "/login");
+                return new AccessTokenResult(AccessTokenResultStatus.RequiresRedirect, null, "/login", null);
             var accessToken = new AccessToken() { Value = token, Expires = DateTimeOffset.Now.AddMinutes(30) };
-            return new AccessTokenResult(AccessTokenResultStatus.Success, accessToken, null);
+            return new AccessTokenResult(AccessTokenResultStatus.Success, accessToken, null, null);
         }
 
         public ValueTask<AccessTokenResult> RequestAccessToken(AccessTokenRequestOptions options)

@@ -13,6 +13,7 @@ namespace PcrBlazor.Shared
         public int MaxUniqueLevel { get; set; }
         public int[] Rarity6Units { get; set; }
         public int[] UniqueEquipUnits { get; set; }
+        public int[] UniqueEquip2Units { get; set; }
         public int[] LimitedUnits { get; set; }
 
         public DateTimeOffset LastModified { get; set; }
