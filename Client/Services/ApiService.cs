@@ -977,7 +977,7 @@ namespace PcrBlazor.Client.Services
                          select j == null || j.Count() < kv.Value;
                 if (ml.Any(m => m))
                     continue;
-                if (!CalcSupporters(tts, boxIds, out var teams))
+                if (!CalcSupporters(tts, boxIds, gs.ExceptSupportUnits, out var teams))
                     continue;
 
                 var utg = new UserTeamGroup
@@ -1042,7 +1042,7 @@ namespace PcrBlazor.Client.Services
                         var rindexTeam = rteamsArr.Select((a, i) => a.IsNullOrEmpty() ? null : tg.Teams[i]).Where(i => i != null).ToArray();
                         foreach (var rts in GetTeams(rteamsArr))
                         {
-                            if (!CalcSupporters(rts, leftBoxIds, out var teams, rindexTeam))
+                            if (!CalcSupporters(rts, leftBoxIds, gs.ExceptSupportUnits, out var teams, rindexTeam))
                                 continue;
                             for (int rti = 0; rti < teams.Count; rti++)
                             {
@@ -1100,7 +1100,7 @@ namespace PcrBlazor.Client.Services
             return list;
         }
 
-        private bool CalcSupporters(ClanBattleTeam[] cbts, List<int> boxIds, out List<UserTeam> teams, UserTeam[] rtnTeams = null)
+        private bool CalcSupporters(ClanBattleTeam[] cbts, List<int> boxIds, List<int> exceptSpIds, out List<UserTeam> teams, UserTeam[] rtnTeams = null)
         {
             teams = null;
             var boxBak = boxIds.ToList();
@@ -1147,6 +1147,8 @@ namespace PcrBlazor.Client.Services
                 var uids = leftTs.SelectMany(t => t.UnitIds).ToList();
                 ExceptBox(uids, boxBak);
                 if (uids.Count > leftTs.Count)
+                    return false;
+                if (exceptSpIds?.Intersect(uids).Any() == true)
                     return false;
 
                 var dict = new Dictionary<int, List<int>>();

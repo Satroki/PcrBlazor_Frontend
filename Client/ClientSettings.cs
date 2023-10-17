@@ -121,6 +121,7 @@ namespace PcrBlazor.Client
         public List<int> GroupIds { get; set; }
         public List<int> ExceptUnits { get; set; } = new();
         public List<int> ExceptAllUnits { get; set; } = new();
+        public List<int> ExceptSupportUnits { get; set; } = new();
 
         public override string ToString()
         {

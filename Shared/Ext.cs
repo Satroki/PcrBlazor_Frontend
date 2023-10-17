@@ -266,6 +266,27 @@ namespace PcrBlazor.Shared
                 && s.WaveHpRecovery == t.WaveHpRecovery;
         }
 
+        public static void StatusCopy(this IUnitStatus source, IUnitStatus target)
+        {
+            target.Accuracy = source.Accuracy;
+            target.Atk = source.Atk;
+            target.Def = source.Def;
+            target.Dodge = source.Dodge;
+            target.EnergyRecoveryRate = source.EnergyRecoveryRate;
+            target.EnergyReduceRate = source.EnergyReduceRate;
+            target.Hp = source.Hp;
+            target.HpRecoveryRate = source.HpRecoveryRate;
+            target.LifeSteal = source.LifeSteal;
+            target.MagicCritical = source.MagicCritical;
+            target.MagicDef = source.MagicDef;
+            target.MagicPenetrate = source.MagicPenetrate;
+            target.MagicStr = source.MagicStr;
+            target.PhysicalCritical = source.PhysicalCritical;
+            target.PhysicalPenetrate = source.PhysicalPenetrate;
+            target.WaveEnergyRecovery = source.WaveEnergyRecovery;
+            target.WaveHpRecovery = source.WaveHpRecovery;
+        }
+
         public static int GetUnitsHashCode(this IEnumerable<ISearchAreaWidth> units)
         {
             var hash = new HashCode();

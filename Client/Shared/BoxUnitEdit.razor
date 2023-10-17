@@ -345,6 +345,8 @@
         Line.LoveLevel = Line.TargetLoveLevel = maxLoveLevel;
         if (!noUnique)
             Line.UniqueEquipRank = Line.TargetUniqueEquipRank = info.MaxUniqueLevel;
+        if (!noUnique2)
+            Line.UniqueEquip2Rank = 5;
         Line.CheckAllSlots();
     }
 

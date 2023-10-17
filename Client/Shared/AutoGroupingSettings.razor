@@ -46,6 +46,22 @@
         </div>
     </div>
 </div>
+<div style="margin:10px 0">
+    <RadzenLabel Text="不借以下角色：" Style="margin:0 5px 0 0" />
+    <RadzenLabel Text="清空" Style="margin:0 5px 0 0;color:dodgerblue;cursor:pointer" @onclick="ClearUnits3" />
+
+    <div class="ags-u-div">
+        @foreach (var u3 in units3.OrderBy(u => u.SearchAreaWidth))
+        {
+            <div class="ags-unit" @onclick="_=>RemoveUnit3(u3)">
+                <RadzenImage Path="@u3.Icon.GetUnitIcon()" MouseEnter="e=>ts.ShowString(e,u3.UnitName)" MouseLeave="ts.Close" />
+            </div>
+        }
+        <div class="ags-unit ags-add d-f-c" style="" @onclick="PickUnits3">
+            <i class="rzi" style="font-size:64px;color:#adadad;">add</i>
+        </div>
+    </div>
+</div>
 <div class="col-md-12 d-flex align-items-end justify-content-center" style="margin-top: 10px;">
     <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="确定"
                   Click="Ok" />
@@ -90,6 +106,7 @@
     IEnumerable<int> groupIds;
     List<UnitData> units = new();
     List<UnitData> units2 = new();
+    List<UnitData> units3 = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -104,6 +121,11 @@
         {
             var all = await api.GetAllUnitDatasAsync(Server);
             units2 = all.Where(u => Settings.ExceptAllUnits.Contains(u.UnitId)).ToList();
+        }
+        if (!Settings.ExceptSupportUnits.IsNullOrEmpty())
+        {
+            var all = await api.GetAllUnitDatasAsync(Server);
+            units3 = all.Where(u => Settings.ExceptSupportUnits.Contains(u.UnitId)).ToList();
         }
     }
 
@@ -140,6 +162,16 @@
         Settings.ExceptAllUnits = units2.Select(u => u.UnitId).ToList();
     }
 
+    async Task PickUnits3()
+    {
+        var d = await ds.OpenUnitPickerAsync(null, null, Settings.ExceptSupportUnits);
+        if (d.IsNullOrEmpty())
+            units3.Clear();
+        else
+            units3 = d;
+        Settings.ExceptSupportUnits = units3.Select(u => u.UnitId).ToList();
+    }
+
     void RemoveUnit(UnitData u)
     {
         units?.Remove(u);
@@ -150,6 +182,11 @@
         units2?.Remove(u);
         Settings.ExceptAllUnits?.Remove(u.UnitId);
     }
+    void RemoveUnit3(UnitData u)
+    {
+        units3?.Remove(u);
+        Settings.ExceptSupportUnits?.Remove(u.UnitId);
+    }
     void ClearUnits()
     {
         units.Clear();
@@ -159,6 +196,11 @@
     {
         units2.Clear();
         Settings.ExceptAllUnits = new();
+    }
+    void ClearUnits3()
+    {
+        units3.Clear();
+        Settings.ExceptSupportUnits = new();
     }
     async Task Ok()
     {
