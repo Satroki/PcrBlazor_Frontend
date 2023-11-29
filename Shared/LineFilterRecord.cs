@@ -51,6 +51,7 @@ namespace PcrBlazor.Shared
         {
             ["已毕业"] = l => l.IsFinished,
             ["已毕业(不含星)"] = l => l.CheckFinished(false),
+            ["已毕业(仅装备)"] = l => l.CheckSlotFinished(),
             ["未毕业"] = l => !l.IsFinished,
             ["未毕业(不含星)"] = l => !l.CheckFinished(false),
             ["未毕业(仅装备)"] = l => !l.CheckSlotFinished(),

@@ -259,7 +259,12 @@
             multiLine = m;
             multiMode = true;
             noUnique = !info.UniqueEquipUnits.Intersect(multiLine.LineUnitIds).Any();
-            maxStar = info.Rarity6Units.Intersect(multiLine.LineUnitIds).Any() ? 6 : 5;
+            var r6ids = api.Settings.UseJpRarity6 ? jpi.Rarity6Units : info.Rarity6Units;
+            if (r6ids.Intersect(multiLine.LineUnitIds).Any())
+            {
+                maxStar = 6;
+                maxLoveLevel = 12;
+            }
             m.PropertyChanged += MultiLine_PropertyChanged;
         }
         else if (Line != null)

@@ -35,7 +35,7 @@ namespace PcrBlazor.Client
         public bool EnableTargetSlots { get; set; } = false;
         public bool EnableQuestEfficiency { get; set; } = true;
         public bool ShowSkillValueNo { get; set; } = true;
-        public bool RemoteSolve { get; set; }
+        //public bool RemoteSolve { get; set; }
         public bool EnableExtraStock { get; set; }
         public bool IncludeExtraDrops { get; set; }
         public bool IgnoreDonation { get; set; }

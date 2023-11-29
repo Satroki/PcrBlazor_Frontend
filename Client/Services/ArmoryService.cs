@@ -497,23 +497,23 @@ namespace PcrBlazor.Client.Services
 
         public async Task<List<SolveResult>> GetSolveResultsAsync(SolveRequest r)
         {
-            if (!api.Settings.RemoteSolve)
+            //if (!api.Settings.RemoteSolve)
+            //{
+            if (solveHelper == null || solveHelper.Server != r.Server)
             {
-                if (solveHelper == null || solveHelper.Server != r.Server)
-                {
-                    var eds = await api.GetEquipmentDatasAsync(r.Server);
-                    var areas = await api.GetAreaInfos(r.Server);
-                    await CalcQuestEfficiency(areas.SelectMany(a => a.Quests), r.Server);
-                    solveHelper = new PcrSolveHelper(r.Server, eds, areas, api.GetSolveTask());
-                }
-                solveHelper.UpdateIncludeExtraDrops(api.Settings.IncludeExtraDrops);
-                solveHelper.UpdateDemands(await GetEquipmentDemand(r.Server));
-                return await solveHelper.GetJsSolveResult(r);
+                var eds = await api.GetEquipmentDatasAsync(r.Server);
+                var areas = await api.GetAreaInfos(r.Server);
+                await CalcQuestEfficiency(areas.SelectMany(a => a.Quests), r.Server);
+                solveHelper = new PcrSolveHelper(r.Server, eds, areas, api.GetSolveTask());
             }
-            else
-            {
-                return await api.GetSolveResultsAsync(r);
-            }
+            solveHelper.UpdateIncludeExtraDrops(api.Settings.IncludeExtraDrops);
+            solveHelper.UpdateDemands(await GetEquipmentDemand(r.Server));
+            return await solveHelper.GetJsSolveResult(r);
+            //}
+            //else
+            //{
+            //    return await api.GetSolveResultsAsync(r);
+            //}
         }
     }
 }

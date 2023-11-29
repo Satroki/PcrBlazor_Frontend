@@ -85,8 +85,6 @@
         <div class="d-flex align-items-center" style="margin-top:10px">
             <RadzenCheckBox @bind-Value="s.EnableExtraStock" />
             <RadzenLabel Text="启用装备囤积" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"可在装备库中设置额外需求量，并参与规划计算"))" MouseLeave="ts.Close" />
-            <RadzenCheckBox @bind-Value="s.RemoteSolve" />
-            <RadzenLabel Text="服务端计算" Style="margin:0 10px 0 5px" MouseEnter="@(e=>ts.ShowString(e,"默认本地计算刷图规划，如计算不正常可切换至服务端计算"))" MouseLeave="ts.Close" />
         </div>
         <div class="d-flex align-items-center" style="margin-top:10px">
             <RadzenCheckBox @bind-Value="s.UseJpCraft" />
