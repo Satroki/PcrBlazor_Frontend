@@ -153,6 +153,7 @@ namespace PcrBlazor.Shared
                     qp.Type = si.Title;
                     qp.QuestSection = i + 1;
                     qp.QuestId = si.Id * 100 + i;
+                    qp.Stamina = 10;
                     qp.ItemId = (i % 2) switch
                     {
                         0 => si.Unit1,

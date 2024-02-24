@@ -5,7 +5,7 @@ namespace PcrBlazor.Shared
 {
     public class PieceStock
     {
-        static readonly int[] RarityUp = new[] { 0, 30, 100, 120, 150, 50 };
+        static readonly int[] RarityUp = [0, 30, 100, 120, 150, 50];
 
         public int UnitUid { get; set; }
         public int Stock { get; set; }
@@ -56,7 +56,10 @@ namespace PcrBlazor.Shared
             {
                 for (int i = r; i < 6 && i < tr; i++)
                 {
-                    target += RarityUp[i];
+                    if (sp && i == 5)
+                        target += 25;
+                    else
+                        target += RarityUp[i];
                 }
                 if (tr == 6)
                     beads = 100;
