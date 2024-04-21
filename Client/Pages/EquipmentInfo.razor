@@ -101,7 +101,7 @@ else
     </RadzenCard>
 }
 
-@code{
+@code {
     [Parameter]
     public int EquipmentId { get; set; }
     [CascadingParameter(Name = "Server")]
@@ -123,12 +123,19 @@ else
     IEnumerable<UnitPromotion> unitPromotions;
     string title;
     Dictionary<string, double> status;
+    int idBase = 10_0000;
+    int modBase = 1_0000;
 
     protected override async Task OnParametersSetAsync()
     {
         title = null;
-        uid = EquipmentId % 10000;
-        equipId = 10_0000 + uid;
+        if (EquipmentId >= 1000_0000)
+        {
+            idBase = 1000_0000;
+            modBase = 100_0000;
+        }
+        uid = EquipmentId % modBase;
+        equipId = idBase + uid;
         sv = Server;
         await GetEquipments(sv);
         if (equipment == null && sv == "cn")
@@ -147,7 +154,7 @@ else
         await api.GetEquipmentStatusSetAsync();
         if (equipment.CraftFlg)
         {
-            source = equips.FirstOrDefault(e => e.EquipmentId % 10000 == uid && !e.CraftFlg);
+            source = equips.FirstOrDefault(e => e.EquipmentId % modBase == uid && !e.CraftFlg);
             sourceId = source?.EquipmentId ?? 0;
         }
         else

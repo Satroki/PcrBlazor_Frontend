@@ -24,6 +24,11 @@
 
         <RadzenButton ButtonStyle="ButtonStyle.Info" Text="查询" Click="Query"
                       Style="margin-right:10px;padding:0 16px" />
+        <RadzenCheckBox @bind-Value="byTime" />
+        <RadzenLabel Text="按时间" Style="margin:0 10px 0 5px" />
+
+        <RadzenLabel Text="数量" Style="margin:0 5px 0 0" />
+        <RadzenNumeric Min="1" Max="100" TValue="int" @bind-Value="limit" Style="width:60px" />
     </div>
     @if (list == null)
     {
@@ -52,6 +57,8 @@
                                 <div class="cr-tag" active="@cr.Arrange">排刀</div>
                                 <div class="cr-tag" active="@cr.Bot">Bot</div>
                                 <div class="cr-tag" active="@cr.Report">报刀</div>
+                                <div class="f-1"></div>
+                                <div>@cr.UpdateAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</div>
                             </div>
                             <hr />
                             @if (!cr.Brief.IsNullOrEmpty())
@@ -154,6 +161,8 @@
     int uid;
     ClanRecruitment published = null;
     bool isAdmin = false;
+    bool byTime = true;
+    int limit = 20;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -161,7 +170,7 @@
         uid = user.User.GetUserId();
         isAdmin = user.User.IsInRole("Admin");
 
-        list = await api.GetClanRecruitments(Server);
+        list = await api.GetClanRecruitments(Server, byTime, limit);
         if (list.Any() && list[0].UserId == uid)
         {
             published = list[0];
@@ -172,9 +181,9 @@
     async Task Publish()
     {
         var p = await ds.OpenAsync<EditRecruitment>("发布招募", new Dictionary<string, object>
-        {
-            ["Recruitment"] = new ClanRecruitment { Server = Server }
-        });
+            {
+                ["Recruitment"] = new ClanRecruitment { Server = Server }
+            });
         if (p is ClanRecruitment r)
         {
             r.Own = true;
@@ -186,9 +195,9 @@
     async Task Edit()
     {
         var p = await ds.OpenAsync<EditRecruitment>("编辑招募", new Dictionary<string, object>
-        {
-            ["Recruitment"] = published.JsonCopy()
-        });
+            {
+                ["Recruitment"] = published.JsonCopy()
+            });
         if (p is ClanRecruitment r)
         {
             r.Own = true;

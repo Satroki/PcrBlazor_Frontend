@@ -11,8 +11,8 @@ namespace PcrBlazor.Client
         public const string ToolUrl = "https://pan.baidu.com/s/1EC_MplDJvRBK6bUHHUn8DA";
         public const string ToolUrlCode = "vk3g";
 
-        public const int EquipMaxRank = 9;
-        public const string EquipRankDesp = "1-9: 白-铜-银-金-紫-红-绿-橙-青";
+        public const int EquipMaxRank = 10;
+        public const string EquipRankDesp = "1-10: 白-铜-银-金-紫-红-绿-橙-青-桃";
         public const string ApiBase = null;
     }
 }

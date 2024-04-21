@@ -41,7 +41,7 @@
     <div class="d-flex flex-row flex-wrap">
         @if (consume != null)
         {
-            var data = consume.Where(c => consumeMode ? !c.CraftFlg : c.CraftFlg).OrderByDescending(d => d.EquipmentId % 10000);
+            var data = consume.Where(c => consumeMode ? !c.CraftFlg : c.CraftFlg).OrderByDescending(d => d.PromotionLevel).ThenByDescending(d => d.EquipmentId);
             foreach (var se in data)
             {
                 @if (se.PromotionLevel >= sr.MinLevel)
@@ -85,7 +85,7 @@
                                 Style="width:110px;margin-right:10px" />
                 <RadzenTextBox Placeholder="搜索..." @bind-Value="@searchKey" Change="Filter"
                                Style="width:110px;margin-right:10px" />
-                <p class="solve-title text-center f-1" style="margin:0 110px 0 0">计算结果：共扫荡 @(solveResults.Sum(r=>r.Times)) 次，消耗体力 @(solveResults.Sum(r=>r.Stamina))</p>
+                <p class="solve-title text-center f-1" style="margin:0 110px 0 0">计算结果：共扫荡 @(solveResults.Sum(r => r.Times)) 次，消耗体力 @(solveResults.Sum(r => r.Stamina))</p>
                 <div style="width:130px;text-align:right">
                     <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="规划" Click="Solve" Style="padding:0 10px" />
                     <RadzenButton Text="导出" Click="Export" ButtonStyle="ButtonStyle.Info" Style="padding: 0 10px; margin-left: 10px" />
@@ -515,17 +515,29 @@
         {
             if (eq.CraftFlg)
             {
-                if (allEquips.TryGetValue(id + 10000, out eq))
-                    id = eq.EquipmentId;
-                else if (allEquips.TryGetValue(id + 20000, out eq))
-                    id = eq.EquipmentId;
+                if (id > 1000_0000)
+                {
+                    if (allEquips.TryGetValue(id + 100_0000, out eq))
+                        id = eq.EquipmentId;
+                    else if (allEquips.TryGetValue(id + 200_0000, out eq))
+                        id = eq.EquipmentId;
+                    else
+                        return;
+                }
                 else
-                    return;
+                {
+                    if (allEquips.TryGetValue(id + 10000, out eq))
+                        id = eq.EquipmentId;
+                    else if (allEquips.TryGetValue(id + 20000, out eq))
+                        id = eq.EquipmentId;
+                    else
+                        return;
+                }
             }
             dialog.Open<ItemDrop>(eq.EquipmentName, new Dictionary<string, object>
-            {
-                ["ItemId"] = id
-            }, new DialogOptions { Width = "700px" });
+                {
+                    ["ItemId"] = id
+                }, new DialogOptions { Width = "700px" });
         }
     }
 

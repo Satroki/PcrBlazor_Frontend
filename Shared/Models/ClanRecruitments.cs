@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace PcrBlazor.Shared
@@ -23,5 +24,6 @@ namespace PcrBlazor.Shared
         public string Link { get; set; }
         [NotMapped]
         public bool Own { get; set; }
+        public DateTime? UpdateAt { get; set; }
     }
 }

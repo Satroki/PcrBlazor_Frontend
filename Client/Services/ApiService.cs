@@ -166,9 +166,9 @@ namespace PcrBlazor.Client.Services
             return await resp.ReadAsAsync<ClanRecruitment>();
         }
 
-        public async Task<List<ClanRecruitment>> GetClanRecruitments(string s)
+        public async Task<List<ClanRecruitment>> GetClanRecruitments(string s, bool byTime, int limit = 20)
         {
-            var resp = await hc.GetAsync($"api/Clan/GetClanRecruitments?s={s}");
+            var resp = await hc.GetAsync($"api/Clan/GetClanRecruitments?s={s}&byTime={byTime}&limit={limit}");
             return await resp.ReadAsAsync<List<ClanRecruitment>>();
         }
 

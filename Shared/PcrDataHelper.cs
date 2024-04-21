@@ -616,26 +616,18 @@ namespace PcrBlazor.Shared
         public Dictionary<string, double> CalcUniqueEquipmentStatus(UniqueEquipmentData eq, List<UniqueEquipEnhanceRate> enhanceRates, int enhanceLevel)
         {
             var status = new Dictionary<string, double>();
-            if (enhanceRates.Count == 1)
+            foreach (var p in statusKeys)
             {
-                var rate = enhanceRates[0];
-                foreach (var p in statusKeys)
+                var value = eq.GetValue(p);
+                var enhance = 0d;
+                foreach (var er in enhanceRates)
                 {
-                    var value = eq.GetValue(p) + Math.Ceiling(enhanceLevel * rate.GetValue(p));
-                    status.Add(p, value);
+                    if (enhanceLevel < er.MinLv)
+                        break;
+                    var el = er.MaxLv > 0 ? Math.Min(er.MaxLv, enhanceLevel) : enhanceLevel;
+                    enhance += er.GetValue(p) * (el - er.MinLv + 1);
                 }
-            }
-            else if (enhanceRates.Count == 2)
-            {
-                var r1 = enhanceRates[0];
-                var r2 = enhanceRates[1];
-                var e1 = Math.Min(enhanceLevel, 260) - 1;
-                var e2 = Math.Max(enhanceLevel, 260) - 260;
-                foreach (var p in statusKeys)
-                {
-                    var value = eq.GetValue(p) + Math.Ceiling(e1 * r1.GetValue(p) + e2 * r2.GetValue(p));
-                    status.Add(p, value);
-                }
+                status.Add(p, value + Math.Ceiling(enhance));
             }
             return status;
         }

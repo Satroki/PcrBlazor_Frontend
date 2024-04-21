@@ -8,8 +8,8 @@
     <RadzenLabel Text="仅材料" />
     @*@if (Server == "cn")
     {
-        <RadzenCheckBox TValue="bool" @bind-Value="useJp" Change="Calc" Style="margin:0 5px 0 10px" />
-        <RadzenLabel Text="减负后" MouseEnter="e=>ts.ShowString(e,note)" MouseLeave="ts.Close" />
+    <RadzenCheckBox TValue="bool" @bind-Value="useJp" Change="Calc" Style="margin:0 5px 0 10px" />
+    <RadzenLabel Text="减负后" MouseEnter="e=>ts.ShowString(e,note)" MouseLeave="ts.Close" />
     }*@
     <RadzenCheckBox TValue="bool" @bind-Value="withStock" Change="Calc" Style="margin:0 5px 0 10px" />
     <RadzenLabel Text="减库存" MouseEnter="e=>ts.ShowString(e,note2)" MouseLeave="ts.Close" />
@@ -93,12 +93,12 @@ else
         statusSet = await api.GetEquipmentStatusSetAsync();
         allDatas = result.OrderByDescending(k => k.Value)
             .Select(kv => new SimpleEquipmentData
-            {
-                EquipmentId = kv.Key,
-                ConsumeNum = kv.Value,
-                EquipmentName = statusSet.TryGetName(kv.Key, Server),
-                PromotionLevel = kv.Key.GetEquipmentPromotionLevel()
-            });
+                {
+                    EquipmentId = kv.Key,
+                    ConsumeNum = kv.Value,
+                    EquipmentName = statusSet.TryGetName(kv.Key, Server),
+                    PromotionLevel = kv.Key.GetEquipmentPromotionLevel()
+                });
         Filter();
     }
 
@@ -122,10 +122,17 @@ else
                 else if (statusSet.Contains(id + 20000))
                     id = id + 20000;
             }
-            dialog.Open<ItemDrop>(name, new Dictionary<string, object>
+            else if (id > 1000_0000 && id < 1100_0000)
             {
-                ["ItemId"] = id
-            }, new DialogOptions { Width = "700px" });
+                if (statusSet.Contains(id + 100_0000))
+                    id = id + 100_0000;
+                else if (statusSet.Contains(id + 200_0000))
+                    id = id + 200_0000;
+            }
+            dialog.Open<ItemDrop>(name, new Dictionary<string, object>
+                {
+                    ["ItemId"] = id
+                }, new DialogOptions { Width = "700px" });
         }
     }
 }
