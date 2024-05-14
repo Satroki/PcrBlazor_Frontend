@@ -9,6 +9,7 @@
         public int Hard { get; set; }
         public int HardTimes { get; set; }
         public int AreaLimit { get; set; }
+        public int QuestLimit { get; set; }
         public int Forecast { get; set; }
         public int MinLevel { get; set; }
 

@@ -19,6 +19,8 @@
             <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.HardTimes" Style="width:60px" Visible="@(sr.Hard>0)" />
             <RadzenLabel Text="地图上限" Style="margin:0 5px 0 10px" />
             <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.AreaLimit" Style="width:60px" />
+            <p style="margin:0 5px">-</p>
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.QuestLimit" Style="width:60px" />
             @if (api.Settings.ShowForecast && sr.AreaLimit > 0)
             {
                 <RadzenLabel Text="预测上限" Style="margin:0 5px 0 10px" MouseEnter="@(e=>ts.ShowString(e,"未来地图上限：规划时减扣未来地图掉落期望"))" MouseLeave="ts.Close" />
@@ -276,6 +278,7 @@
         sr.Hard = areas.SolveHard;
         sr.HardTimes = areas.SolveHardTimes;
         sr.AreaLimit = areas.SolveAreaLimit;
+        sr.QuestLimit = areas.SolveQuestLimit;
         sr.Forecast = areas.SolveForecast;
         sr.MinLevel = areas.MinLevel;
         showAdd = s.ShowStockAdd;
@@ -301,6 +304,7 @@
         areas.SolveNormal = sr.Normal;
         areas.SolveHard = sr.Hard;
         areas.SolveAreaLimit = sr.AreaLimit;
+        areas.SolveQuestLimit = sr.QuestLimit;
         areas.SolveHardTimes = sr.HardTimes;
         areas.SolveForecast = sr.Forecast;
         areas.MinLevel = sr.MinLevel;

@@ -22,7 +22,7 @@ namespace PcrBlazor.Shared
             {
                 0 => $"{pre}HP】",
                 1 => $"{pre}损失的HP】",
-                2 => $"{pre}击杀的敌方数量】",
+                2 => $"使【动作{a.ActionDetail_1 % 10}】的系数{a.ActionDetail_2}提高【{BuildExpression([new ActionValue(a.ActionValue_2 * 2, a.ActionValue_3, null)])} * 击杀的敌方数量】",// 乘2
                 4 => $"{pre}目标的数量】",
                 5 => $"{pre}受到伤害的目标数量】",
                 6 => $"{pre}伤害量】",

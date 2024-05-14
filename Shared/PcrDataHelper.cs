@@ -863,7 +863,13 @@ namespace PcrBlazor.Shared
             if (r.Hard == 0)
                 qids = qids.Where(id => id < 12_000_000);
             if (areaLimit > 0)
+            {
                 qids = qids.Where(id => id / 1000 % 100 <= areaLimit);
+                if (r.QuestLimit > 0)
+                {
+                    qids = qids.Where(id => (id / 1000 % 100 < areaLimit) || (id / 1000 % 100 == areaLimit && id % 100 <= r.QuestLimit));
+                }
+            }
             var questIds = qids.Distinct().ToArray();
             Array.Sort(questIds);
             Array.Reverse(questIds);

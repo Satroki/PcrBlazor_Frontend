@@ -48,6 +48,11 @@ namespace PcrBlazor.Shared
             return (int)value.Value;
         }
 
+        public static SkillActionValue operator *(SkillActionValue value, double m)
+        {
+            return new SkillActionValue(value.Value * m, value.Name);
+        }
+
         public SkillActionValue Multiply(double d)
         {
             return new(Value * d, Name);

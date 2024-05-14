@@ -13,6 +13,7 @@ namespace PcrBlazor.Client
         public int SolveHard { get; set; }
         public int SolveHardTimes { get; set; }
         public int SolveAreaLimit { get; set; }
+        public int SolveQuestLimit { get; set; }
         public int SolveForecast { get; set; }
         public bool ShowForecast { get; set; } = true;
         public int MinLevel { get; set; } = 4;
@@ -90,6 +91,7 @@ namespace PcrBlazor.Client
         public int SolveHard { get; set; }
         public int SolveHardTimes { get; set; }
         public int SolveAreaLimit { get; set; }
+        public int SolveQuestLimit { get; set; } = 14;
         public int SolveForecast { get; set; }
         public bool ShowForecast { get; set; } = true;
         public int MinLevel { get; set; } = 4;
@@ -101,6 +103,7 @@ namespace PcrBlazor.Client
         int SolveHard { get; set; }
         int SolveHardTimes { get; set; }
         int SolveAreaLimit { get; set; }
+        int SolveQuestLimit { get; set; }
         int SolveForecast { get; set; }
         int MinLevel { get; set; }
         bool ShowForecast { get; set; }
