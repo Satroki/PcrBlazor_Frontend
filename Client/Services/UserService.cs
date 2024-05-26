@@ -64,9 +64,9 @@ namespace PcrBlazor.Client.Services
             return r;
         }
 
-        public async Task<AccountResult> UpdateUserInfo(string nickName)
+        public async Task<AccountResult> UpdateUserInfo(AccountModel model)
         {
-            var r = await hc.PostAsJsonAsync("api/Accounts/UpdateUserInfo", new AccountModel { NickName = nickName });
+            var r = await hc.PostAsJsonAsync("api/Accounts/UpdateUserInfo", model);
             return await r.ReadAsAsync<AccountResult>();
         }
 

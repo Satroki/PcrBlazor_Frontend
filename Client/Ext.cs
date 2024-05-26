@@ -39,7 +39,7 @@ namespace PcrBlazor.Client
 
         public static string GetUserName(this ClaimsPrincipal user)
         {
-            return user.FindFirst("NickName")?.Value ?? user.Identity.Name;
+            return user.FindFirst("NickName")?.Value ?? user.FindFirst("UserNameAlias")?.Value ?? user.Identity.Name;
         }
 
         public static int GetUserId(this ClaimsPrincipal user)

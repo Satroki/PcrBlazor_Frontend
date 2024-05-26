@@ -14,6 +14,7 @@ namespace PcrBlazor.Client
         ChangeEmail,
         ChangeNickName,
         Info,
-        None
+        None,
+        ChangeUserNameAlias
     }
 }

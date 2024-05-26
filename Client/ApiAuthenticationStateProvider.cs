@@ -109,6 +109,8 @@ namespace PcrBlazor.Client
                 Claims.Add(new Claim(ClaimTypes.NameIdentifier, jid.GetString()));
             if (dict.TryGetValue("NickName", out var nn))
                 Claims.Add(new Claim("NickName", nn.GetString()));
+            if (dict.TryGetValue("UserNameAlias", out var una))
+                Claims.Add(new Claim("UserNameAlias", una.GetString()));
             if (dict.TryGetValue(ClaimTypes.Role, out var jroles))
             {
                 switch (jroles.ValueKind)

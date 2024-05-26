@@ -14,6 +14,7 @@ namespace PcrBlazor.Shared
         public string NewPassword { get; set; }
         public string Email { get; set; }
         public string NickName { get; set; }
+        public string UserNameAlias { get; set; }
     }
 
     public class AccountResult

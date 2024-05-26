@@ -16,6 +16,12 @@
                     <a href="javascript:void(0)" @onclick="ChangePwd" style="align-self:flex-end" hidden="@user.NoPassword">修改密码</a>
                 </div>
             </RadzenFieldset>
+            <RadzenFieldset Text="用户别名（可用于登录）">
+                <div class="d-flex align-items-center">
+                    <RadzenLabel Text="@user.UserNameAlias" Style="flex:1" />
+                    <a href="javascript:void(0)" @onclick="ChangeUserNameAlias" style="align-self:flex-end">修改</a>
+                </div>
+            </RadzenFieldset>
             <RadzenFieldset Text="昵称（修改后重新登陆生效）">
                 <div class="d-flex align-items-center">
                     <RadzenLabel Text="@(user.NickName ?? user.UserName)" Style="flex:1" />
@@ -80,11 +86,11 @@
     LoginPageMode mode = LoginPageMode.None;
 
     Dictionary<string, string> otherLogin = new()
-    {
-        ["QQ"] = "QQ",
-        ["Microsoft"] = "微软",
-        ["GitHub"] = "GitHub"
-    };
+        {
+            ["QQ"] = "QQ",
+            ["Microsoft"] = "微软",
+            ["GitHub"] = "GitHub"
+        };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -156,29 +162,43 @@
     async Task ChangePwd()
     {
         await ds.OpenAsync<LoginSetting>("修改密码", new Dictionary<string, object>
-        {
-            ["Mode"] = LoginPageMode.ChangePwd
-        });
+            {
+                ["Mode"] = LoginPageMode.ChangePwd
+            });
     }
 
     async Task ChangeNickName()
     {
         var nn = await ds.OpenAsync<LoginSetting>("修改昵称", new Dictionary<string, object>
-        {
-            ["Mode"] = LoginPageMode.ChangeNickName
-        });
+            {
+                ["Mode"] = LoginPageMode.ChangeNickName,
+                ["StringHolder"] = user.NickName
+            });
         if (nn is string s && !s.IsNullOrEmpty())
         {
             user.NickName = s;
         }
     }
 
+    async Task ChangeUserNameAlias()
+    {
+        var nn = await ds.OpenAsync<LoginSetting>("修改别名", new Dictionary<string, object>
+            {
+                ["Mode"] = LoginPageMode.ChangeUserNameAlias,
+                ["StringHolder"] = user.UserNameAlias
+            });
+        if (nn is string s && !s.IsNullOrEmpty())
+        {
+            user.UserNameAlias = s;
+        }
+    }
+
     async Task ChangeEmail()
     {
         var em = await ds.OpenAsync<LoginSetting>("修改邮箱", new Dictionary<string, object>
-        {
-            ["Mode"] = LoginPageMode.ChangeEmail
-        });
+            {
+                ["Mode"] = LoginPageMode.ChangeEmail
+            });
         if (em is string s && !s.IsNullOrEmpty())
         {
             user.Email = s;

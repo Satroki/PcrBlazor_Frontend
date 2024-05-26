@@ -28,6 +28,18 @@
                 </div>
             </div>
         }
+        @if (Mode == LoginPageMode.ChangeUserNameAlias)
+        {
+            <div class="row align-items-center mb-3">
+                <div class="col-3">
+                    <RadzenLabel Text="别名" /><span class="red">*</span>
+                </div>
+                <div class="col-9">
+                    <RadzenTextBox Name="UserNameAlias" @bind-Value="model.UserNameAlias" input-block />
+                    <RadzenRequiredValidator Component="UserNameAlias" Text="请输入别名" Style="position: absolute;z-index:10" />
+                </div>
+            </div>
+        }
         @if (Mode == LoginPageMode.ResetPwd || Mode == LoginPageMode.ChangeEmail)
         {
             <div class="row align-items-center mb-3">
@@ -89,6 +101,8 @@
 @code {
     [Parameter]
     public LoginPageMode Mode { get; set; }
+    [Parameter]
+    public string StringHolder { get; set; }
 
     AccountModel model = new AccountModel();
     string submitText;
@@ -105,8 +119,14 @@
             LoginPageMode.ChangePwd => "修改密码",
             LoginPageMode.ChangeEmail => "修改邮箱",
             LoginPageMode.ChangeNickName => "修改昵称",
+            LoginPageMode.ChangeUserNameAlias => "修改别名",
             _ => "提交"
         };
+
+        if (Mode == LoginPageMode.ChangeNickName)
+            model.NickName = StringHolder;
+        if (Mode == LoginPageMode.ChangeUserNameAlias)
+            model.UserNameAlias = StringHolder;
     }
 
     async Task OnSubmit()
@@ -154,11 +174,23 @@
                     break;
                 case LoginPageMode.ChangeNickName:
                     {
-                        var r = await us.UpdateUserInfo(model.NickName);
+                        var r = await us.UpdateUserInfo(new() { NickName = model.NickName });
                         if (r.Successful)
                         {
                             ns.Notify(NotificationSeverity.Success, "修改成功");
                             ds.Close(model.NickName);
+                        }
+                        else
+                            ns.Notify(NotificationSeverity.Error, "修改失败", r.Error);
+                    }
+                    break;
+                case LoginPageMode.ChangeUserNameAlias:
+                    {
+                        var r = await us.UpdateUserInfo(new() { UserNameAlias = model.UserNameAlias });
+                        if (r.Successful)
+                        {
+                            ns.Notify(NotificationSeverity.Success, "修改成功");
+                            ds.Close(model.UserNameAlias);
                         }
                         else
                             ns.Notify(NotificationSeverity.Error, "修改失败", r.Error);

@@ -10,6 +10,7 @@ namespace PcrBlazor.Shared
     {
         public int Id { get; set; }
         public string UserName { get; set; }
+        public string UserNameAlias { get; set; }
         public string NickName { get; set; }
         public string Email { get; set; }
         public string ShareId { get; set; }
