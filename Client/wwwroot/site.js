@@ -116,14 +116,14 @@ window.getSolveResult = (model) => {
     }
 }
 
-document.onkeyup = (ev) => {
-    if (ev.keyCode === 27)
-        DotNet.invokeMethodAsync("PcrBlazor.Client", "CloseDialog");
-}
+//document.onkeyup = (ev) => {
+//    if (ev.key === 'Escape')
+//        DotNet.invokeMethodAsync("PcrBlazor.Client", "CloseDialog");
+//}
 
 document.onclick = (ev) => {
-    let node = ev.target || ev.srcElement;
-    if (node.classList.contains('rz-dialog-mask'))
+    let node = ev.target;
+    if (node.classList.contains('rz-dialog-wrapper') || node.classList.contains('rz-dialog-mask'))
         DotNet.invokeMethodAsync("PcrBlazor.Client", "CloseDialog");
 }
 

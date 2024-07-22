@@ -20,7 +20,7 @@
 </div>
 <div class="d-flex align-items-center">
     <RadzenUpload Multiple="true" Accept="image/*" Url="@uploadUrl" ChooseText="选取图片" Progress="UploadProgress"
-                  Complete="UploadComplete" Error="UploadError" title="识别装备库存截图" />
+                  Complete="UploadComplete" Error="UploadError" title="识别装备库存截图" Disabled="true"/>
     <RadzenProgressBar Value="@progress" Style="flex:1;margin-left:20px" />
 </div>
 <div style="min-height:100px; max-height: calc(100vh - 240px);overflow-y:auto">
@@ -78,7 +78,7 @@
     List<SimpleEquipmentData> equipments;
     bool flag;
     EquipmentStatusSet statusSet;
-    string note = "服务端单次仅识别一种装等，每张图识别上限15个\n完整功能请使用桌面应用";
+    string note = "装备图像识别不再维护，建议使用BoxSync工具";
 
     protected override async Task OnInitializedAsync()
     {

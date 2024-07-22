@@ -78,6 +78,13 @@ namespace PcrBlazor.Shared
         public int UnitLevel { get; set; }
         public int TotalExp { get; set; }
     }
+    public class ExperienceTeam
+    {
+        [Key]
+        public int TeamLevel { get; set; }
+        public int TotalExp { get; set; }
+    }
+
     public class LoveChara
     {
         [Key]

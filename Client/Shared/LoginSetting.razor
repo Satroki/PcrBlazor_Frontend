@@ -85,8 +85,8 @@
                                   Disabled="@(loading1 || model.UserName.IsNullOrEmpty() || model.Email.IsNullOrEmpty())" />
                 </div>
                 <div class="col-9">
-                    <RadzenTextArea Name="Token" @bind-Value="model.Password" input-block Rows="3" />
-                    <RadzenRequiredValidator Component="Token" Text="请输入令牌" Style="position: absolute;z-index:13" />
+                    <RadzenTextBox Name="Token" @bind-Value="model.Password" input-block />
+                    <RadzenRequiredValidator Component="Token" Text="请输入验证码" Style="position: absolute;z-index:13" />
                 </div>
             </div>
         }
