@@ -80,7 +80,7 @@
         {
             <div class="row align-items-center mb-3">
                 <div class="col-3 align-items-center">
-                    <RadzenLabel Text="令牌" /><span class="red">*</span>
+                    <RadzenLabel Text="验证码" /><span class="red">*</span>
                     <RadzenButton ButtonStyle="ButtonStyle.Secondary" Text="获取" Style="padding:0 10px;margin-left:10px" Click="GetToken"
                                   Disabled="@(loading1 || model.UserName.IsNullOrEmpty() || model.Email.IsNullOrEmpty())" />
                 </div>
