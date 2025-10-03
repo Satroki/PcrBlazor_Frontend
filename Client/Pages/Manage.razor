@@ -27,6 +27,10 @@
         <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="日服" Click="@SyncJpDb" Disabled="@loading" />
         <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="检查国服角色名" Click="@SyncCnDbName" Disabled="@loading" />
         <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="刷新缓存" Click="@RefreshCache" />
+        <div style="margin:10px 0" class="d-flex align-items-center">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="更新版本" Click="@SetVer" Disabled="@loading" Style="margin-right:10px" />
+            <RadzenTextBox Placeholder="App Ver" @bind-Value="appVer" />
+        </div>
     </RadzenFieldset>
     <RadzenFieldset Text="其他">
         <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="统计" Click="@GetStatistics" Disabled="@loading" />
@@ -80,6 +84,7 @@
     string uploadUrl;
     string uploadDocUrl;
     string jwt = "Bearer ";
+    string appVer;
 
     protected override void OnParametersSet()
     {
@@ -91,6 +96,15 @@
     void SyncImage()
     {
         dialog.Open<SyncImages>("同步图片");
+    }
+
+    async Task SetVer()
+    {
+        var r = await hc.GetAsync($"/api/Manage/SetCnAppVer?ver={appVer}");
+        if (r.IsSuccessStatusCode)
+            notify.Notify(NotificationSeverity.Success, "版本号已更新");
+        else
+            notify.Notify(NotificationSeverity.Error, "版本号更新失败");
     }
 
     async Task SyncCnDb()

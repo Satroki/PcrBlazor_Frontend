@@ -12,9 +12,9 @@
         <div class="d-flex flex-wrap align-items-center">
             <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="规划" Click="Solve" Style="padding:0 10px" />
             <RadzenLabel Text="普通倍率" Style="margin:0 5px 0 10px" />
-            <RadzenNumeric Min="0" Max="5" TValue="int" @bind-Value="sr.Normal" Style="width:60px" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.Normal" Style="width:60px" />
             <RadzenLabel Text="困难倍率" Style="margin:0 5px 0 10px" />
-            <RadzenNumeric Min="0" Max="5" TValue="int" @bind-Value="sr.Hard" Style="width:60px" />
+            <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.Hard" Style="width:60px" />
             <RadzenLabel Text="困难次数" Style="margin:0 5px 0 10px" title="每张困难图的刷取次数上限" Visible="@(sr.Hard>0)" />
             <RadzenNumeric Min="0" TValue="int" @bind-Value="sr.HardTimes" Style="width:60px" Visible="@(sr.Hard>0)" />
             <RadzenLabel Text="地图上限" Style="margin:0 5px 0 10px" />
