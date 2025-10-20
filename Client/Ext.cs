@@ -1,4 +1,5 @@
 ﻿using Blazored.LocalStorage;
+using Microsoft.AspNetCore.Components;
 using PcrBlazor.Client.Shared;
 using PcrBlazor.Shared;
 using Radzen;
@@ -16,7 +17,7 @@ namespace PcrBlazor.Client
     {
         public static async Task<bool> OpenConfirmAsync(this DialogService dialog, string title, string content = null)
         {
-            var cr = await dialog.OpenAsync<Confirm>(title, new Dictionary<string, object> { ["Content"] = content },
+            var cr = await dialog.POpenAsync<Confirm>(title, new Dictionary<string, object> { ["Content"] = content },
                 new DialogOptions { Width = "400px" });
             if (cr is bool b)
                 return b;
@@ -26,7 +27,7 @@ namespace PcrBlazor.Client
         public static async Task<List<UnitData>> OpenUnitPickerAsync(this DialogService dialog,
             List<int> filter = null, List<int> preset = null, List<int> selected = null)
         {
-            var cr = await dialog.OpenAsync<UnitPicker>("选取角色", new Dictionary<string, object>
+            var cr = await dialog.POpenAsync<UnitPicker>("选取角色", new Dictionary<string, object>
             {
                 ["Filter"] = filter,
                 ["Preset"] = preset,
@@ -72,6 +73,20 @@ namespace PcrBlazor.Client
                 return await r.Content.ReadFromJsonAsync<T>();
             }
             return default;
+        }
+
+        public static void POpen<T>(this DialogService ds, string title, Dictionary<string, object> parameters = null, DialogOptions options = null) where T : ComponentBase
+        {
+            options ??= new();
+            options.CloseDialogOnOverlayClick = true;
+            ds.Open<T>(title, parameters, options);
+        }
+
+        public static Task<dynamic> POpenAsync<T>(this DialogService ds, string title, Dictionary<string, object> parameters = null, DialogOptions options = null) where T : ComponentBase
+        {
+            options ??= new();
+            options.CloseDialogOnOverlayClick = true;
+            return ds.OpenAsync<T>(title, parameters, options);
         }
     }
 }

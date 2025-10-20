@@ -129,7 +129,7 @@ else
                 else if (statusSet.Contains(id + 200_0000))
                     id = id + 200_0000;
             }
-            dialog.Open<ItemDrop>(name, new Dictionary<string, object>
+            dialog.POpen<ItemDrop>(name, new Dictionary<string, object>
                 {
                     ["ItemId"] = id
                 }, new DialogOptions { Width = "700px" });

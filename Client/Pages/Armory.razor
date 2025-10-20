@@ -214,7 +214,7 @@
 
     async Task Import()
     {
-        var b = await dialog.OpenAsync<ImportStock>("导入数据");
+        var b = await dialog.POpenAsync<ImportStock>("导入数据");
         if (b is bool bb && bb)
         {
             arm.UpdateSimpleEquipmentsNum(oridatas, Server);
@@ -228,7 +228,7 @@
 
     async Task Upload()
     {
-        var b = await dialog.OpenAsync<Recognize>("装备识别", options: new DialogOptions { Width = "650px" });
+        var b = await dialog.POpenAsync<Recognize>("装备识别", options: new DialogOptions { Width = "650px" });
         if (b is bool bb && bb)
         {
             arm.UpdateSimpleEquipmentsNum(oridatas, Server);
@@ -242,12 +242,12 @@
 
     void CalcDemand()
     {
-        dialog.Open<EquipmentDemand>("需求估算", new Dictionary<string, object> { ["MinLevel"] = fr.MinLevel });
+        dialog.POpen<EquipmentDemand>("需求估算", new Dictionary<string, object> { ["MinLevel"] = fr.MinLevel });
     }
 
     async Task ShowFilter()
     {
-        var r = await dialog.OpenAsync<ArmoryFilter>("自定义筛选", new() { ["FilterRecord"] = fr });
+        var r = await dialog.POpenAsync<ArmoryFilter>("自定义筛选", new() { ["FilterRecord"] = fr });
         if (r is bool b && b)
         {
             await Filter();

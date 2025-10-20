@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
+using UT = PcrBlazor.Shared.Talent;
 
 namespace PcrBlazor.Shared
 {
@@ -15,6 +16,7 @@ namespace PcrBlazor.Shared
         public string TraceKey { get; set; }
         public string FinKey { get; set; }
         public UnitPosition? Position { get; set; }
+        public int? Talent { get; set; }
         public List<int> GroupIds { get; set; }
         public bool? FilterUnique { get; set; }
         public bool? FilterRarity6 { get; set; }
@@ -26,6 +28,7 @@ namespace PcrBlazor.Shared
         public bool ShowTrace { get; set; } = true;
         public bool ShowFin { get; set; } = true;
         public bool ShowPos { get; set; } = true;
+        public bool ShowTalent { get; set; } = true;
         public bool ShowSearch { get; set; } = true;
         public bool ShowUnique { get; set; }
         public bool ShowR6 { get; set; }
@@ -63,6 +66,17 @@ namespace PcrBlazor.Shared
             ["前卫"] = UnitPosition.Front,
             ["中卫"] = UnitPosition.Middle,
             ["后卫"] = UnitPosition.Behind,
+        };
+
+
+        [JsonIgnore]
+        public Dictionary<UT, int> TalentDict { get; } = new Dictionary<UT, int>
+        {
+            [UT.火] = (int)UT.火,
+            [UT.水] = (int)UT.水,
+            [UT.风] = (int)UT.风,
+            [UT.光] = (int)UT.光,
+            [UT.暗] = (int)UT.暗,
         };
 
         [JsonIgnore]
@@ -103,6 +117,8 @@ namespace PcrBlazor.Shared
                 lines = lines.Where(fp);
             if (ShowPos && Position.HasValue)
                 lines = lines.Where(l => l.Position == Position);
+            if (ShowTalent && Talent.HasValue)
+                lines = lines.Where(l => l.Talent == Talent);
             if (!Groups.IsNullOrEmpty() && !GroupIds.IsNullOrEmpty())
             {
                 var lineIds = Groups.Where(g => GroupIds.Contains(g.Id)).SelectMany(g => g.LineIds).ToList();

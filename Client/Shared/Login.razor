@@ -167,7 +167,7 @@
 
     async Task ResetPassword()
     {
-        await ds.OpenAsync<LoginSetting>("重置密码", new Dictionary<string, object>
+        await ds.POpenAsync<LoginSetting>("重置密码", new Dictionary<string, object>
         {
             ["Mode"] = LoginPageMode.ResetPwd
         });

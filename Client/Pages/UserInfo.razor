@@ -161,7 +161,7 @@
 
     async Task ChangePwd()
     {
-        await ds.OpenAsync<LoginSetting>("修改密码", new Dictionary<string, object>
+        await ds.POpenAsync<LoginSetting>("修改密码", new Dictionary<string, object>
             {
                 ["Mode"] = LoginPageMode.ChangePwd
             });
@@ -169,7 +169,7 @@
 
     async Task ChangeNickName()
     {
-        var nn = await ds.OpenAsync<LoginSetting>("修改昵称", new Dictionary<string, object>
+        var nn = await ds.POpenAsync<LoginSetting>("修改昵称", new Dictionary<string, object>
             {
                 ["Mode"] = LoginPageMode.ChangeNickName,
                 ["StringHolder"] = user.NickName
@@ -182,7 +182,7 @@
 
     async Task ChangeUserNameAlias()
     {
-        var nn = await ds.OpenAsync<LoginSetting>("修改别名", new Dictionary<string, object>
+        var nn = await ds.POpenAsync<LoginSetting>("修改别名", new Dictionary<string, object>
             {
                 ["Mode"] = LoginPageMode.ChangeUserNameAlias,
                 ["StringHolder"] = user.UserNameAlias
@@ -195,7 +195,7 @@
 
     async Task ChangeEmail()
     {
-        var em = await ds.OpenAsync<LoginSetting>("修改邮箱", new Dictionary<string, object>
+        var em = await ds.POpenAsync<LoginSetting>("修改邮箱", new Dictionary<string, object>
             {
                 ["Mode"] = LoginPageMode.ChangeEmail
             });

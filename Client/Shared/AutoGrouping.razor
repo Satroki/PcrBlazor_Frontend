@@ -269,7 +269,7 @@
 
     async Task Import()
     {
-        var d = await ds.OpenAsync<ImportTeam>("导入队伍");
+        var d = await ds.POpenAsync<ImportTeam>("导入队伍");
         if (d is List<ClanBattleTeam> tms)
             await ImportTeams(tms);
     }
@@ -355,7 +355,7 @@
 
     async Task Share(ClanBattleTeam t)
     {
-        var r = await ds.OpenAsync<TeamShare>("分享队伍", new Dictionary<string, object> { ["Team"] = t });
+        var r = await ds.POpenAsync<TeamShare>("分享队伍", new Dictionary<string, object> { ["Team"] = t });
         if (r is ClanBattleTeam)
         {
             await Save(cbTeams);
@@ -391,7 +391,7 @@
 
     async Task SearchTeams(bool doc)
     {
-        var r = await ds.OpenAsync<TeamSearch>(doc ? "作业网导入" : "作业查询", new Dictionary<string, object> { ["DocMode"] = doc },
+        var r = await ds.POpenAsync<TeamSearch>(doc ? "作业网导入" : "作业查询", new Dictionary<string, object> { ["DocMode"] = doc },
         new DialogOptions { Width = "610px" });
         if (r is List<ClanBattleTeam> tms)
         {
@@ -401,12 +401,12 @@
 
     void ShowAxis(ClanBattleTeam t)
     {
-        ds.Open<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["ReadOnly"] = true, ["Links"] = t.Links });
+        ds.POpen<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["ReadOnly"] = true, ["Links"] = t.Links });
     }
 
     async Task ShowSettings()
     {
-        await ds.OpenAsync<AutoGroupingSettings>("角色限制", new()
+        await ds.POpenAsync<AutoGroupingSettings>("角色限制", new()
             {
                 ["Settings"] = gs
             });

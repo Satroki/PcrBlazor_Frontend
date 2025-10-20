@@ -549,7 +549,7 @@
 
     async Task Import()
     {
-        var r = await ds.OpenAsync<ImportStock>("导入数据", new Dictionary<string, object> { ["PieceMode"] = true });
+        var r = await ds.POpenAsync<ImportStock>("导入数据", new Dictionary<string, object> { ["PieceMode"] = true });
         if (r is Dictionary<int, int> dict)
         {
             foreach (var (id, num) in dict)
@@ -653,6 +653,6 @@
         list.AddRange(vhard.Where(p => p.Enabled).OrderByDescending(p => p.QuestLevel).ThenByDescending(p => p.QuestSection));
         list.AddRange(hard.Where(p => p.Enabled).OrderByDescending(p => p.QuestLevel).ThenByDescending(p => p.QuestSection));
         var list2 = eventsOld.Where(p => p.Enabled).OrderBy(p => p.QuestId).ToList();
-        ds.Open<StaminaPlansView>("规划总览", new Dictionary<string, object> { ["Plans"] = list, ["ShioriPlans"] = list2 });
+        ds.POpen<StaminaPlansView>("规划总览", new Dictionary<string, object> { ["Plans"] = list, ["ShioriPlans"] = list2 });
     }
 }

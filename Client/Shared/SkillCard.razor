@@ -62,7 +62,7 @@
         var su = Unit.SubUnits.FirstOrDefault(u => u.UnitId == uid);
         if (su != null)
         {
-            ds.Open<SummonUnitInfo>(su.UnitName ?? su.UnitId.ToString(), new Dictionary<string, object> { ["Unit"] = su });
+            ds.POpen<SummonUnitInfo>(su.UnitName ?? su.UnitId.ToString(), new Dictionary<string, object> { ["Unit"] = su });
         }
     }
 }

@@ -122,6 +122,8 @@ namespace PcrBlazor.Shared
         [NotMapped]
         public bool HasRarity6 { get; set; }
         [NotMapped]
+        public int Talent { get; set; }
+        [NotMapped]
         [JsonIgnore]
         public Dictionary<string, double> Status { get; set; }
 
@@ -243,6 +245,7 @@ namespace PcrBlazor.Shared
             HasUniqueEquip = Array.IndexOf(si.UniqueEquipUnits, UnitId) >= 0;
             HasUniqueEquip2 = Array.IndexOf(si.UniqueEquip2Units, UnitId) >= 0;
             HasRarity6 = Array.IndexOf(si.Rarity6Units, UnitId) >= 0;
+            Talent = si.UnitTalentDict.GetValueOrDefault(UnitId / 100, 1);
         }
 
         public void CheckTarget()

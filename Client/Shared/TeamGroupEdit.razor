@@ -308,7 +308,7 @@
 
     async Task EditAxis(UserTeam t)
     {
-        var r = await ds.OpenAsync<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["Links"] = t.Links });
+        var r = await ds.POpenAsync<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["Links"] = t.Links });
         if (r is string s)
         {
             t.Axis = s;
@@ -326,6 +326,6 @@
             UnitIds = t.Units.Select(u => u.UnitId).ToList()
         };
         api.SetUnits(cbt.Yield(), units);
-        var r = await ds.OpenAsync<TeamShare>("分享队伍", new Dictionary<string, object> { ["Team"] = cbt, ["ShowSave"] = false });
+        var r = await ds.POpenAsync<TeamShare>("分享队伍", new Dictionary<string, object> { ["Team"] = cbt, ["ShowSave"] = false });
     }
 }

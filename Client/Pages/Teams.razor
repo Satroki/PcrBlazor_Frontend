@@ -51,7 +51,7 @@
     async Task Create()
     {
         var ng = new UserTeamGroup { Name = "新编组", Server = Server, WithSupport = true, UnitReusable = false };
-        var d = await ds.OpenAsync<TeamGroupEdit>("创建编组", new Dictionary<string, object> { ["Group"] = ng }, new DialogOptions { Width = "820px" });
+        var d = await ds.POpenAsync<TeamGroupEdit>("创建编组", new Dictionary<string, object> { ["Group"] = ng }, new DialogOptions { Width = "820px" });
         if (d is bool b && b)
         {
             await GetGroups();
@@ -73,7 +73,7 @@
     void AutoGroup()
     {
         nav.NavigateTo("/group");
-        //var d = await ds.OpenAsync<AutoGrouping>("自动编组", null, new DialogOptions { Width = "1080px" });
+        //var d = await ds.POpenAsync<AutoGrouping>("自动编组", null, new DialogOptions { Width = "1080px" });
         //await GetGroups();
     }
 }

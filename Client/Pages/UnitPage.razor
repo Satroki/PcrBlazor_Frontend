@@ -39,7 +39,7 @@ else
                         </ul>
                     </div>
                     <div class="f-1 unit-profile">
-                        <div class="unit-comment">@Data.Comment.Replace("\\n", "\n")</div>
+                        <div class="unit-comment">【@ut】@Data.Comment.Replace("\\n", "\n")</div>
                         <div class="unit-comment">【索敌距离：@Data.SearchAreaWidth】</div>
                         <div style="margin-top: 10px;">
                             <RadzenFieldset Text="简介">
@@ -91,7 +91,7 @@ else
                     <div class="d-flex align-items-center">
                         <RadzenLabel Text="Rank" />
                         <RadzenDropDown Data="unitSourceData.UnitPromotions" TValue="UnitPromotion" TextProperty="PromotionLevel"
-                                @bind-Value="promotion" Change="PromotionChanged" Style="margin:0 10px 0 5px;width:100px" />
+                                        @bind-Value="promotion" Change="PromotionChanged" Style="margin:0 10px 0 5px;width:100px" />
                         @if (promotion != null)
                         {
                             foreach (var slot in promotion.EquipSlotsVertical)
@@ -251,6 +251,7 @@ else
     string ueDesp;
     string ue2Desp;
     int enhance2Level = 5;
+    Talent ut = Talent.火;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -268,6 +269,7 @@ else
                 statusSet = await api.GetEquipmentStatusSetAsync();
                 promotion = unitSourceData.UnitPromotions.First(p => p.PromotionLevel == pl.Value);
                 var si = await api.GetServerInfoAsync(Server);
+                ut = (Talent)si.UnitTalentDict.GetValueOrDefault(UnitId / 100, 1);
                 jpsi = await api.GetServerInfoAsync("jp");
                 calculator = await api.GetStatusCalculator(Server);
                 tempLine = new UserBoxLine

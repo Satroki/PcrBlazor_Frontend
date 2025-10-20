@@ -90,7 +90,7 @@
 
     async Task Edit()
     {
-        var d = await ds.OpenAsync<TeamGroupEdit>("编辑编组", new Dictionary<string, object> { ["Group"] = Group }, new DialogOptions { Width = "820px" });
+        var d = await ds.POpenAsync<TeamGroupEdit>("编辑编组", new Dictionary<string, object> { ["Group"] = Group }, new DialogOptions { Width = "820px" });
         if (d is bool b && b)
             await GroupChanged.InvokeAsync(Group);
     }
@@ -111,7 +111,7 @@
 
     void ShowAxis(UserTeam t)
     {
-        ds.Open<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["ReadOnly"] = true, ["Links"] = t.Links });
+        ds.POpen<TextAreaView>("轴", new Dictionary<string, object> { ["Text"] = t.Axis, ["ReadOnly"] = true, ["Links"] = t.Links });
     }
 
     async Task SelectTeam(UserTeam t)

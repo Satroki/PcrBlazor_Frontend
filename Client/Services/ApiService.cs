@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TG.Blazor.IndexedDB;
 using System.Net.Http.Headers;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace PcrBlazor.Client.Services
 {
@@ -83,6 +84,7 @@ namespace PcrBlazor.Client.Services
             if (!serverInfo.TryGetValue(s, out var info))
             {
                 info = await phc.GetFromJsonAsync<UnitServerInfo>("api/Unit/GetUnitServerInfo?s=" + s);
+                info.UnitTalentDict = new(info.TalentDict.SelectMany(kv => kv.Value.Select(v => KeyValuePair.Create(v, kv.Key))));
                 serverInfo.Add(s, info);
             }
             return info;
@@ -612,12 +614,19 @@ namespace PcrBlazor.Client.Services
             return await resp.ReadAsAsync<string>();
         }
 
-        public async Task ExportUserBox(IEnumerable<UserBoxLine> box)
+        public async Task ExportUserBox(IEnumerable<UserBoxLine> box, bool withStatus = false)
         {
-            var user = await storage.GetItemAsync<string>("UserName");
-            var fav = new UserFavorite { Note = user, Box = box.ToList() };
-            var data = PcrDataHelper.ExportBoxData(new[] { fav }, Settings.ExportFields);
-            await SaveStringAsFile("Box导出.csv", data);
+            if (withStatus)
+            {
+                await ExportUserBoxWithStatus(box);
+            }
+            else
+            {
+                var user = await storage.GetItemAsync<string>("UserName");
+                var fav = new UserFavorite { Note = user, Box = box.ToList() };
+                var data = PcrDataHelper.ExportBoxData(new[] { fav }, Settings.ExportFields);
+                await SaveStringAsFile("Box导出.csv", data);
+            }
         }
 
         public async Task ExportUserBox(IEnumerable<UnitFilterResult> rs)
@@ -625,6 +634,46 @@ namespace PcrBlazor.Client.Services
             var favs = rs.Select(f => new UserFavorite { Note = f.Note, Box = f.Lines });
             var data = PcrDataHelper.ExportBoxData(favs, Settings.ExportFields);
             await SaveStringAsFile("收藏筛选导出.csv", data);
+        }
+
+        public async Task ExportUserBoxWithStatus(IEnumerable<UserBoxLine> box)
+        {
+            if (box.IsNullOrEmpty())
+                return;
+            var server = box.First().Server;
+            var sb = new StringBuilder();
+            sb.Append("UID,角色,等级,星级,Rank,好感,专武,专武2");
+            foreach (var k in UnitStatus.StatusKeys)
+            {
+                sb.Append(',').Append(UnitStatus.Names[k]);
+            }
+            sb.AppendLine();
+
+            var rawBox = await GetUserBox(server);
+            var calculator = await GetStatusCalculator(server);
+            var (mr, ms, ma) = await GetLimitParamAsync(server);
+
+            foreach (var line in box)
+            {
+                sb.Append(line.UnitId).Append(',');
+                sb.Append(line.UnitName).Append(',');
+                sb.Append(line.Level).Append(',');
+                sb.Append(line.Rarity).Append(',');
+                sb.Append(line.Promotion).Append('-').Append(line.Slots.Count(s => s)).Append(',');
+                sb.Append(line.LoveLevel).Append(',');
+                sb.Append(line.UniqueEquipRank).Append(',');
+                sb.Append(line.UniqueEquip2Rank);
+
+                var sd = await GetUnitSourceDataAsync(line.UnitId);
+                var us = calculator.CalcUnitStatus(line, sd, rawBox, mr, ms, ma);
+
+                foreach (var k in UnitStatus.StatusKeys)
+                {
+                    sb.Append(',').Append(us.StatusDict[k]);
+                }
+                sb.AppendLine();
+            }
+            await SaveStringAsFile($"Box带属性导出.csv", sb.ToString());
         }
 
         public async Task SaveFileLink(string filename, string link)

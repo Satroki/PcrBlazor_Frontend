@@ -18,6 +18,7 @@
             {
                 <p class="box-unit-priority" style="background-color: rgba(0,255,0,0.7);">@Line.Priority</p>
             }
+            <p class="box-unit-talent t-@Line.Talent">@((Talent)Line.Talent)</p>
         </div>
         <div class="f-1" @onclick="@(arg=>Edit())" style="cursor:pointer">
             <BoxUnitEquipments Line="Line" ShowStock="@ShowStock" />
@@ -89,7 +90,7 @@
         {
             arm.StartTrackBoxLines(new List<UserBoxLine> { Line });
             var copy = Line.JsonCopy();
-            var nl = await dialog.OpenAsync<BoxUnitEdit>(Line.UnitName,
+            var nl = await dialog.POpenAsync<BoxUnitEdit>(Line.UnitName,
                 new Dictionary<string, object>
                     {
                         ["Line"] = copy,

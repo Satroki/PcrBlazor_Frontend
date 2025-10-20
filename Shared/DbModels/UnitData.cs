@@ -112,4 +112,26 @@ namespace PcrBlazor.Shared
         public int OriginalUnitId { get; set; }
         public int UnitId { get; set; }
     }
+
+    public class UnitTalent
+    {
+        [Key]
+        public int SettingId { get; set; }
+        public int UnitId { get; set; }
+        public int TalentId { get; set; }
+    }
+
+    public enum Talent
+    {
+        //0xFFe65d49
+        火 = 1,
+        //0xFF65B0FA
+        水 = 2,
+        //0xFF5EB56D
+        风 = 3,
+        //0xFFEBA827
+        光 = 4,
+        //0xFFb86ada
+        暗 = 5
+    }
 }

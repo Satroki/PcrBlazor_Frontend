@@ -28,6 +28,10 @@
             <RadzenLabel Text="位置" Component="ShowPos" Style="margin-left: 5px;" />
         </div>
         <div class="div-cb-group">
+            <RadzenCheckBox @bind-Value="@FilterRecord.ShowTalent" TValue="bool" Name="ShowTalent" />
+            <RadzenLabel Text="属性" Component="ShowTalent" Style="margin-left: 5px;" />
+        </div>
+        <div class="div-cb-group">
             <RadzenCheckBox @bind-Value="@FilterRecord.ShowUnique" TValue="bool" Name="ShowUnique" />
             <RadzenLabel Text="专武" Component="ShowUnique" Style="margin-left: 5px;" />
         </div>

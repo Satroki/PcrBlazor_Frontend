@@ -180,7 +180,7 @@
 
     async Task Publish()
     {
-        var p = await ds.OpenAsync<EditRecruitment>("发布招募", new Dictionary<string, object>
+        var p = await ds.POpenAsync<EditRecruitment>("发布招募", new Dictionary<string, object>
             {
                 ["Recruitment"] = new ClanRecruitment { Server = Server }
             });
@@ -194,7 +194,7 @@
 
     async Task Edit()
     {
-        var p = await ds.OpenAsync<EditRecruitment>("编辑招募", new Dictionary<string, object>
+        var p = await ds.POpenAsync<EditRecruitment>("编辑招募", new Dictionary<string, object>
             {
                 ["Recruitment"] = published.JsonCopy()
             });

@@ -29,7 +29,12 @@
             </RadzenSplitButton>
             <RadzenButton ButtonStyle="ButtonStyle.Primary" Text="分组" Click="@ShowGroup" Style="padding:0 16px" />
             <RadzenButton Text="分享" ButtonStyle="ButtonStyle.Info" Click="@ShareClick" Style="padding:0 16px" />
-            <RadzenButton ButtonStyle="ButtonStyle.Info" Text="导出" Click="@Export" Style="padding:0 16px" />
+            <RadzenSplitButton ButtonStyle="ButtonStyle.Info" Text="导出" Click="Export" Disabled="@loading">
+                <ChildContent>
+                    <RadzenSplitButtonItem Text="带属性当前" Value="wsc" />
+                    <RadzenSplitButtonItem Text="带属性全部" Value="wsa" />
+                </ChildContent>
+            </RadzenSplitButton>
         </div>
     </div>
     <div>
@@ -39,7 +44,7 @@
                 @foreach (var l in box)
                 {
                     <BoxUnit Line="l" AllowEdit="true" SelectMode="@multiMode" SelectedChanged="UnitSelectedChanged"
-                     ShowStock="@showStock" StockChanged="@ChangeStock" />
+                             ShowStock="@showStock" StockChanged="@ChangeStock" />
                 }
                 <div class="box-unit d-f-c" style="cursor:pointer" @onclick="AddUnit">
                     <i class="rzi" style="font-size:128px;color:#adadad;">add</i>
@@ -66,6 +71,7 @@
     IEnumerable<UserBoxLine> box;
     List<UserBoxLine> rawBox;
     string lastStatusKey;
+    bool loading = false;
 
     protected override void OnInitialized()
     {
@@ -129,7 +135,7 @@
             return;
         var line = new MultiBoxLine(lines, Server);
         arm.StartTrackBoxLines(lines);
-        var nl = await dialog.OpenAsync<BoxUnitEdit>(line.UnitName,
+        var nl = await dialog.POpenAsync<BoxUnitEdit>(line.UnitName,
                new Dictionary<string, object> { ["Line"] = line },
                new DialogOptions { Width = "550px" });
         if (nl is BoxEditModel bem && bem.Lines != null)
@@ -161,7 +167,7 @@
     {
         var link = await api.GetShareLink(Server);
         var url = $"{nav.BaseUri}box/{link}";
-        dialog.Open<ShareLink>("Box链接", new Dictionary<string, object> { ["Url"] = url }, new DialogOptions { Width = "680px" });
+        dialog.POpen<ShareLink>("Box链接", new Dictionary<string, object> { ["Url"] = url }, new DialogOptions { Width = "680px" });
     }
 
     async Task EquipClick(RadzenSplitButtonItem item)
@@ -190,14 +196,37 @@
         }
         if (b.Any() || api.Settings.EnableExtraStock)
         {
-            await dialog.OpenAsync<EquipmentGap>("装备需求", new Dictionary<string, object> { ["Box"] = b }, new DialogOptions { Width = "80vw" });
+            await dialog.POpenAsync<EquipmentGap>("装备需求", new Dictionary<string, object> { ["Box"] = b }, new DialogOptions { Width = "80vw" });
             ChangeStock();
         }
     }
 
-    async Task Export()
+    async Task Export(RadzenSplitButtonItem item)
     {
-        await api.ExportUserBox(box);
+        if (item == null)
+            await api.ExportUserBox(box);
+        else
+        {
+            try
+            {
+                loading = true;
+                switch (item.Value)
+                {
+                    case "wsc":
+                        await api.ExportUserBox(box, true);
+                        break;
+                    case "wsa":
+                        await api.ExportUserBox(rawBox, true);
+                        break;
+                    default:
+                        return;
+                }
+            }
+            finally
+            {
+                loading = false;
+            }
+        }
     }
 
     void ModeChange(bool v)
@@ -241,7 +270,7 @@
 
     async Task ShowGroup()
     {
-        var r = await dialog.OpenAsync<GroupBoxUnit>("角色分组", new Dictionary<string, object>
+        var r = await dialog.POpenAsync<GroupBoxUnit>("角色分组", new Dictionary<string, object>
             {
                 ["Lines"] = box.ToList(),
                 ["Groups"] = fr.Groups

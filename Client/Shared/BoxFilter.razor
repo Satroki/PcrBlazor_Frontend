@@ -43,6 +43,12 @@
                     Change="@FilterChanged" Data="@FilterRecord.PositionDict" @bind-Value="FilterRecord.Position"
                     Style="width:95px" />
     }
+    @if (FilterRecord.ShowTalent)
+    {
+        <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="属性" TextProperty="Key" ValueProperty="Value" TValue="int?"
+                        Change="@FilterChanged" Data="@FilterRecord.TalentDict" @bind-Value="FilterRecord.Talent"
+                        Style="width:95px" />
+    }
     @if (FilterRecord.ShowUnique)
     {
         <RadzenDropDown AllowClear="true" AllowFiltering="false" Multiple="false" Placeholder="专武" TextProperty="Key" ValueProperty="Value" TValue="bool?"
@@ -112,7 +118,7 @@
 
     async Task ShowSettings()
     {
-        var r = await ds.OpenAsync<BoxFilterSettings>("筛选设置", new Dictionary<string, object>
+        var r = await ds.POpenAsync<BoxFilterSettings>("筛选设置", new Dictionary<string, object>
             {
                 ["FilterRecord"] = FilterRecord
             }, new() { Width = "400px" });

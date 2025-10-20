@@ -211,6 +211,40 @@
     border-radius: 6px 0 0 0;
 }
 
+.box-unit-talent {
+    top: 0;
+    right: 0;
+    font-size: 0.9em;
+    margin: 0 !important;
+    position: absolute;
+    color: white;
+    line-height: 1em;
+    pointer-events: none;
+    text-align: right;
+    padding: 3px;
+    border-radius: 6px;
+}
+
+    .box-unit .t-1 {
+        background-color: #e65d49cc;
+    }
+
+    .box-unit .t-2 {
+        background-color: #65B0FAcc;
+    }
+
+    .box-unit .t-3 {
+        background-color: #5EB56Dcc;
+    }
+
+    .box-unit .t-4 {
+        background-color: #EBA827cc;
+    }
+
+    .box-unit .t-5 {
+        background-color: #b86adacc;
+    }
+
 .box-btns {
     margin-bottom: 5px;
 }

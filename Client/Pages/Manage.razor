@@ -95,7 +95,7 @@
 
     void SyncImage()
     {
-        dialog.Open<SyncImages>("同步图片");
+        dialog.POpen<SyncImages>("同步图片");
     }
 
     async Task SetVer()
@@ -180,12 +180,12 @@
 
     async Task RefreshCache()
     {
-        await dialog.OpenAsync<CacheManage>("缓存管理");
+        await dialog.POpenAsync<CacheManage>("缓存管理");
     }
 
     void AddUpdateLog()
     {
-        dialog.Open<AddLog>("添加日志");
+        dialog.POpen<AddLog>("添加日志");
     }
 
     public async Task CleanTmp()
@@ -244,7 +244,7 @@
 
     public void AddDrop()
     {
-        dialog.Open<AddDrops>("添加掉落");
+        dialog.POpen<AddDrops>("添加掉落");
     }
 
     public async Task RefreshAds()

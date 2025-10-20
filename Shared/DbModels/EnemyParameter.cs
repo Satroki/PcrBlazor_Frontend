@@ -34,8 +34,8 @@ namespace PcrBlazor.Shared
         public UnitEnemyData EnemyData { get; set; }
         [ForeignKey(nameof(EnemyId))]
         public EnemyMParts EnemyMParts { get; set; }
-        [ForeignKey(nameof(ResistStatusId))]
-        public ResistData ResistData { get; set; }
+        //[ForeignKey(nameof(ResistStatusId))]
+        //public ResistData ResistData { get; set; }
 
         public int UnionBurstLevel { get; set; }
         public int MainSkillLv_1 { get; set; }

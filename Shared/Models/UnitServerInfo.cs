@@ -15,6 +15,8 @@ namespace PcrBlazor.Shared
         public int[] UniqueEquipUnits { get; set; }
         public int[] UniqueEquip2Units { get; set; }
         public int[] LimitedUnits { get; set; }
+        public Dictionary<int, int[]> TalentDict {  get; set; }
+        public Dictionary<int, int> UnitTalentDict {  get; set; }
 
         public DateTimeOffset LastModified { get; set; }
         public int MaxSlots { get; set; }

@@ -200,7 +200,7 @@
 
     async Task AddFavorite()
     {
-        var ff = await dialog.OpenAsync<AddFavorite>("添加收藏");
+        var ff = await dialog.POpenAsync<AddFavorite>("添加收藏");
         if (ff is bool b && b)
         {
             favorites = await api.GetUserFavorites();
@@ -210,7 +210,7 @@
 
     async Task ShowFilter()
     {
-        var list = await dialog.OpenAsync<BoxFavoriteFilter>("筛选条件", null, new DialogOptions { Height = "70vh" });
+        var list = await dialog.POpenAsync<BoxFavoriteFilter>("筛选条件", null, new DialogOptions { Height = "70vh" });
         if (list is List<UnitFilterResult> rs && !rs.IsNullOrEmpty())
         {
             records = rs;
@@ -231,7 +231,7 @@
 
     async Task ShowGroup()
     {
-        var r = await dialog.OpenAsync<GroupFavorite>("收藏分组", new Dictionary<string, object>
+        var r = await dialog.POpenAsync<GroupFavorite>("收藏分组", new Dictionary<string, object>
             {
                 ["Favorites"] = favorites,
                 ["Groups"] = groups
@@ -240,7 +240,7 @@
 
     void Copy()
     {
-        dialog.Open<BoxCopy>("复制选项", new Dictionary<string, object>
+        dialog.POpen<BoxCopy>("复制选项", new Dictionary<string, object>
             {
                 ["ShareId"] = fav.ShareId,
                 ["ShareServer"] = fav.Server,

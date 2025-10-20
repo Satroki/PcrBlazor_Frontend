@@ -150,7 +150,7 @@
     async Task CheckNickName()
     {
         var us = nickNameDict.Values.Where(n=>n.Requests.Any()).ToList();
-        await ds.OpenAsync<CheckNickNames>("检查昵称", new()
+        await ds.POpenAsync<CheckNickNames>("检查昵称", new()
             {
                 ["NickNames"] = us
             }, new DialogOptions { Width = "60vw" });

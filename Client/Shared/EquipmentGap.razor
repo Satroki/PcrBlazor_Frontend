@@ -538,7 +538,7 @@
                         return;
                 }
             }
-            dialog.Open<ItemDrop>(eq.EquipmentName, new Dictionary<string, object>
+            dialog.POpen<ItemDrop>(eq.EquipmentName, new Dictionary<string, object>
                 {
                     ["ItemId"] = id
                 }, new DialogOptions { Width = "700px" });

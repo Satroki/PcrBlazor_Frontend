@@ -46,7 +46,7 @@
 
     void ShowInfo()
     {
-        //dialog.OpenUnitInfo(Unit.UnitId, Unit.UnitName);
+        //dialog.POpenUnitInfo(Unit.UnitId, Unit.UnitName);
     }
 
     void ShowContextMenuWithItems(MouseEventArgs args)
@@ -62,7 +62,7 @@
         ContextMenuService.Close();
         //Console.WriteLine("aaaa");
         //return;
-        ds.Open<AddNickName>("添加昵称", new Dictionary<string, object>
+        ds.POpen<AddNickName>("添加昵称", new Dictionary<string, object>
         {
             ["UnitId"] = Unit.UnitId,
             ["NickNames"] = NickNames,

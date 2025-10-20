@@ -150,7 +150,7 @@
         if (!isAdmin)
             return;
         var ev = new EventCalendar { StartTime = arg.Start, EndTime = arg.End, Title = "「」", Type = EventType.Festival };
-        var r = await ds.OpenAsync<AddEvent>("添加活动", new Dictionary<string, object> { ["Event"] = ev });
+        var r = await ds.POpenAsync<AddEvent>("添加活动", new Dictionary<string, object> { ["Event"] = ev });
         if (r is bool b && b)
         {
             await LoadData(true);
@@ -162,7 +162,7 @@
         if (!isAdmin)
             return;
         var ev = args.Data.JsonCopy();
-        var r = await ds.OpenAsync<AddEvent>("编辑活动", new Dictionary<string, object> { ["Event"] = ev });
+        var r = await ds.POpenAsync<AddEvent>("编辑活动", new Dictionary<string, object> { ["Event"] = ev });
         if (r is bool b && b)
         {
             await LoadData(true);

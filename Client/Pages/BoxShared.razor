@@ -88,6 +88,6 @@
 
     async Task AddFavorite()
     {
-        var ff = await dialog.OpenAsync<AddFavorite>("添加收藏", new Dictionary<string, object> { ["Link"] = nav.Uri });
+        var ff = await dialog.POpenAsync<AddFavorite>("添加收藏", new Dictionary<string, object> { ["Link"] = nav.Uri });
     }
 }
