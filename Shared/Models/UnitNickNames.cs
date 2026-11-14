@@ -36,6 +36,11 @@ namespace PcrBlazor.Shared
             NickNames = NickNames.Union(s).ToList();
         }
 
+        public void RemoveNickName(string s)
+        {
+            NickNames.Remove(s);
+        }
+
         public void AddTempName(string s)
         {
             if (!Requests.Contains(s) && !NickNames.Contains(s))
