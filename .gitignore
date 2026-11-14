@@ -17,7 +17,6 @@ tmpl/
 *.sln.docstates
 *.webp
 *.db
-Server/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
