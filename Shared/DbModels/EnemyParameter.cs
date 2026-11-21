@@ -12,7 +12,7 @@ namespace PcrBlazor.Shared
         public int Level { get; set; }
         public int Rarity { get; set; }
         public int PromotionLevel { get; set; }
-        public int Hp { get; set; }
+        public long Hp { get; set; }
         public int Atk { get; set; }
         public int MagicStr { get; set; }
         public int Def { get; set; }

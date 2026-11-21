@@ -14,7 +14,7 @@ namespace PcrBlazor.Shared
         public string Name { get; set; }
         public string Comment { get; set; }
         public int Level { get; set; }
-        public int Hp { get; set; }
+        public long Hp { get; set; }
         public int Atk { get; set; }
         public int MagicStr { get; set; }
         public int Def { get; set; }
@@ -81,7 +81,7 @@ namespace PcrBlazor.Shared
             ScoreCoefficient = v;
         }
 
-        public IEnumerable<(string, int)> GetStatus()
+        public IEnumerable<(string, long)> GetStatus()
         {
             var names = UnitStatus.Names;
             yield return ("等级", Level);
